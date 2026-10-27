@@ -1,0 +1,1947 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b3d5c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-title" content="Hexfarers">
+<meta name="application-name" content="Hexfarers">
+<meta name="description" content="Hexfarers: a hex-island trading and building game against AI bots. Works offline.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Hexfarers</title>
+<style>
+:root{--bg:#0b3d5c;--panel:#082c43;--btn:#12527a;--line:#1b5f8a;--modal:#0e3a57;--accent:#3b8cbf}
+:root[data-theme=night]{--bg:#05070d;--panel:#02030a;--btn:#1a2438;--line:#2a3a5a;--modal:#0a1020;--accent:#5a7bb8}
+:root[data-theme=parchment]{--bg:#3b2a1a;--panel:#2a1d12;--btn:#6b4a2b;--line:#8a6a43;--modal:#4a3321;--accent:#c9a368}
+:root[data-theme=meadow]{--bg:#1b4332;--panel:#0f2a20;--btn:#2d6a4f;--line:#40916c;--modal:#1f4d3a;--accent:#74c69d}
+.bubble{position:fixed;z-index:30;background:#fff;color:#111;border:2px solid #888;border-radius:12px;padding:5px 9px;font-size:13px;font-weight:600;max-width:190px;box-shadow:0 2px 8px #0008;pointer-events:none;transition:opacity .45s;opacity:1}
+.bubble.out{opacity:0}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:#fff;font-family:system-ui,-apple-system,Roboto,sans-serif;overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+#app{display:flex;flex-direction:column;height:100dvh;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);max-width:900px;margin:0 auto}
+#top{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:4px}
+.pl{border:2px solid;border-radius:8px;padding:2px 4px;font-size:11px;background:rgba(0,0,0,.25);line-height:1.3;min-width:0;white-space:nowrap;overflow:hidden}
+.pl.cur{background:rgba(255,255,255,.22)}
+.pl b{font-size:12px}
+.pl .fl{color:#8dff9c;font-weight:800}
+#boardwrap{flex:1;min-height:0;position:relative}
+#board{width:100%;height:100%;display:block}
+#gear{position:absolute;right:6px;top:6px;z-index:6;width:38px;height:38px;border-radius:50%;border:0;background:rgba(0,0,0,.45);color:#fff;font-size:19px}
+#toast{position:absolute;left:50%;top:6%;transform:translate(-50%,-10px);background:rgba(8,32,50,.95);border:2px solid #ffd77a;border-radius:14px;padding:10px 16px;text-align:center;font-size:15px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:5;max-width:92%;line-height:1.45}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+.cardbig{display:inline-block;background:#fff;color:#000;border-radius:8px;padding:6px 12px;font-size:30px;margin:4px 0;box-shadow:0 2px 6px #0008;border:2px solid #333}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:5px;vertical-align:-1px;border:1.5px solid #fff}
+#panel{background:var(--panel);padding:6px 8px;border-top:2px solid var(--line)}
+#msgrow{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:46px}
+#msg{font-size:14px;font-weight:600;flex:1}
+#dice{display:flex;gap:7px;align-items:center}
+#dice .dd{display:flex;gap:6px}
+#dice .tot{font-size:24px;font-weight:800;min-width:30px;text-align:center}
+.die{filter:drop-shadow(0 2px 2px #0009)}
+.tumble .die{animation:tumble .35s linear infinite}
+@keyframes tumble{to{transform:rotate(360deg)}}
+#hand{display:flex;gap:6px;margin:5px 0}
+.chip{flex:1;background:var(--btn);border-radius:8px;padding:3px 0;text-align:center;font-size:16px;position:relative}
+.chip b{margin-left:4px;font-size:16px}
+.chip.gain{animation:chipgain .5s}
+.chip.loss{animation:chiploss .5s}
+@keyframes chipgain{40%{transform:scale(1.25);background:#2e9e5b}}
+@keyframes chiploss{40%{transform:scale(.88);background:#c62828}}
+.pop{position:absolute;left:50%;top:-2px;font-weight:800;font-size:15px;color:#8dff9c;animation:popup 1.1s forwards;pointer-events:none;text-shadow:0 1px 2px #000;z-index:3}
+.pop.neg{color:#ff8a80}
+@keyframes popup{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-30px)}}
+.lock{position:absolute;top:-7px;right:-3px;font-size:10px;background:#000b;border-radius:9px;padding:0 4px;font-style:normal}
+.fly{position:fixed;left:0;top:0;font-size:24px;z-index:30;pointer-events:none;margin:-14px 0 0 -14px}
+#btns{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+#btns button,#mbox button{background:#2e9e5b;color:#fff;border:0;border-radius:8px;padding:7px 2px;font-size:13px;font-weight:600;line-height:1.15}
+#btns button small{display:block;font-weight:400;font-size:10px;opacity:.9}
+button:disabled{background:#3a5568!important;color:#8aa;opacity:.7}
+button.ghost{background:#4a6a80!important}
+#log{font-size:11px;color:#9cc;max-height:46px;overflow:auto;margin-top:5px}
+.hit{animation:pulse 1s infinite;cursor:pointer}
+@keyframes pulse{50%{opacity:.35}}
+.glow{animation:glow 1s ease-in-out infinite}
+@keyframes glow{50%{opacity:.45}}
+.flow{stroke-dasharray:10 8;animation:dash .6s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-18}}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9;padding:12px}
+#modal.hidden{display:none}
+#mbox{background:var(--modal);border:2px solid var(--accent);border-radius:14px;padding:14px;max-width:440px;width:100%;max-height:92dvh;overflow:auto}
+#mbox h3{margin:0 0 8px}
+#mbox .hdr{display:flex;justify-content:space-between;align-items:center}
+#mbox .hdr button.ibtn{width:34px;height:34px;border-radius:50%;padding:0;font-size:18px;background:#1e88e5}
+#mbox .row{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;justify-content:center}
+#mbox .row button{flex:1;padding:10px 6px}
+#mbox .seg{display:flex;gap:4px;margin:4px 0}
+#mbox .seg button{flex:1;background:var(--btn);padding:9px 2px}
+#mbox .seg button.on{background:#2e9e5b}
+#mbox .seg button:disabled{opacity:.55}
+#mbox input[type=range]{width:100%}
+.tog{display:flex;align-items:center;gap:8px;margin:9px 0;font-size:14px}
+.tog input{width:20px;height:20px}
+.stp{display:flex;flex-direction:column;align-items:center;gap:3px;width:52px}
+.stp .e{font-size:20px}.stp button{width:100%;padding:5px 0!important;flex:none!important}
+.stp b{font-size:16px}
+.sec{font-size:13px;opacity:.9;margin-top:10px;font-weight:600}
+.small{font-size:12px;opacity:.85}
+.note{min-height:18px;text-align:center;color:#ffd77a;font-size:13px}
+.drow{display:flex;justify-content:space-between;align-items:center;margin:6px 0;gap:8px}
+.drow button{padding:7px 14px!important}
+.big{font-size:20px}
+#statbtn{position:absolute;left:6px;top:6px;z-index:6;width:38px;height:38px;border-radius:50%;border:0;background:rgba(0,0,0,.45);color:#fff;font-size:18px}
+table.st{width:100%;border-collapse:collapse;font-size:12px;margin:6px 0}
+table.st th,table.st td{padding:4px 3px;text-align:center;border-bottom:1px solid var(--line)}
+table.st td:first-child,table.st th:first-child{text-align:left}
+table.st tr.sub td{opacity:.8;font-size:11px}
+table.st tr.hd td{background:var(--btn);font-weight:700;text-align:left}
+.sbrow{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:12px}
+.sbrow>span{width:46px;font-weight:700}
+.sbw{flex:1;display:flex;align-items:center;gap:6px}
+.sb{display:flex;height:22px;border-radius:4px;overflow:hidden;min-width:2px}
+.sb span{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#111;overflow:hidden}
+.lg{padding:1px 6px;border-radius:4px;margin-right:4px;font-size:13px;color:#111}
+.good{color:#8dff9c}.bad{color:#ff8a80}
+#board{touch-action:none}
+#bank{position:absolute;left:6px;bottom:4px;font-size:11px;background:rgba(0,0,0,.5);border-radius:8px;padding:2px 7px;z-index:4;pointer-events:none;white-space:nowrap}
+#bank .low{color:#ff8a80;font-weight:700}
+#logbtn{position:absolute;left:6px;top:50px;z-index:6;width:38px;height:38px;border-radius:50%;border:0;background:rgba(0,0,0,.45);color:#fff;font-size:18px}
+#top.many{grid-template-columns:repeat(3,1fr)}
+.pl{cursor:pointer}
+#log{cursor:pointer}
+.lg-r{margin:8px 0 2px;font-weight:800;color:#ffd77a;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+.lg-l{font-size:13px;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.logbox{max-height:58vh;overflow:auto;margin:6px 0}
+.achg{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0}
+.ach{background:var(--btn);border-radius:10px;padding:6px 8px;font-size:12px;line-height:1.3}
+.ach b{display:block;font-size:13px}
+.ach.lock{opacity:.38;filter:grayscale(1)}
+.crow{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:14px}
+#zoomctl{position:absolute;right:6px;top:50px;z-index:6;display:flex;flex-direction:column;gap:5px}
+#zoomctl button{width:38px;height:38px;border-radius:50%;border:0;background:rgba(0,0,0,.45);color:#fff;font-size:20px;line-height:1;padding:0}
+.resp{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0;padding:6px 8px;background:rgba(0,0,0,.25);border-radius:8px;font-size:13px}
+.resp button{padding:7px 14px!important;flex:none}
+.resp.no{opacity:.65}
+.myhand{display:flex;gap:5px;margin:4px 0 6px}
+.myhand span{flex:1;background:var(--btn);border-radius:8px;padding:4px 0;text-align:center;font-size:15px;line-height:1.2}
+.myhand b{margin-left:3px}
+.myhand small{display:block;font-size:11px;font-weight:700;min-height:13px}
+body.side #app{max-width:none;display:grid;grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:auto minmax(0,1fr);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+body.side #boardwrap{grid-column:1;grid-row:1/3}
+body.side #top{grid-column:2;grid-row:1;grid-template-columns:repeat(2,1fr)}
+body.side #panel{grid-column:2;grid-row:2;overflow:auto;border-top:0;border-left:2px solid var(--line)}
+body.side #hand{flex-wrap:wrap}
+body.side .chip{flex:1 1 27%}
+@media (max-height:480px){body.side #log{display:none}}
+.info p{margin:5px 0;font-size:13px;line-height:1.35}
+.info h4{margin:10px 0 2px;font-size:14px;color:#ffd77a}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="top"></div>
+  <div id="boardwrap">
+    <svg id="board" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="toast"></div>
+    <button id="gear" aria-label="Settings">⚙</button>
+    <button id="statbtn" aria-label="Statistics">📊</button>
+    <button id="logbtn" aria-label="Game log">📜</button>
+    <div id="bank"></div>
+    <div id="zoomctl"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="zfit" aria-label="Reset zoom">⤢</button></div>
+  </div>
+  <div id="panel">
+    <div id="msgrow"><div id="msg"></div><div id="dice"></div></div>
+    <div id="hand"></div>
+    <div id="btns"></div>
+    <div id="log"></div>
+  </div>
+</div>
+<div id="modal" class="hidden"><div id="mbox"></div></div>
+<script>
+'use strict';
+/* ===== Hexfarers: a hex-island trading & building game (offline, vs AI) ===== */
+const RES=['wood','brick','sheep','wheat','ore'];
+const EMO={wood:'🌲',brick:'🧱',sheep:'🐑',wheat:'🌾',ore:'⛰️'};
+const HEXCOL={wood:'#3f8f4a',brick:'#c8693a',sheep:'#a8d878',wheat:'#ecca4e',ore:'#9097a6',desert:'#e8d9a8',sea:'#1d6a99'};
+const THEMES={
+  ocean:{name:'Ocean',bg:'#0b3d5c',tiles:{wood:'#3f8f4a',brick:'#c8693a',sheep:'#a8d878',wheat:'#ecca4e',ore:'#9097a6',desert:'#e8d9a8',sea:'#1d6a99'}},
+  night:{name:'Night',bg:'#05070d',tiles:{wood:'#2f6b3a',brick:'#a14f2c',sheep:'#86b35e',wheat:'#c9a53a',ore:'#6f7686',desert:'#bfae80',sea:'#16406a'}},
+  parchment:{name:'Parchment',bg:'#3b2a1a',tiles:{wood:'#5f7a3c',brick:'#b5683c',sheep:'#b7c277',wheat:'#d9b25a',ore:'#8d8a82',desert:'#e6d6a8',sea:'#3e6f7c'}},
+  meadow:{name:'Meadow',bg:'#1b4332',tiles:{wood:'#2d8a43',brick:'#d1763f',sheep:'#b8e07a',wheat:'#f1d04a',ore:'#a3acb9',desert:'#eadfb2',sea:'#3a8fb0'}}
+};
+function applyTheme(){
+  const k=THEMES[S.theme]?S.theme:'ocean',t=THEMES[k];
+  document.documentElement.dataset.theme=k;Object.assign(HEXCOL,t.tiles);
+  const m=document.querySelector('meta[name=theme-color]');if(m)m.content=t.bg;
+}
+const PCOL=['#e53935','#1e88e5','#fb8c00','#8e24aa','#ec407a','#f1f1f1'];
+const COLS_STD=[['Red','#e53935'],['Blue','#1e88e5'],['Orange','#fb8c00'],['Purple','#8e24aa'],['Pink','#ec407a'],['White','#f1f1f1']];
+const COLS_CB=[['Orange','#E69F00'],['Sky blue','#56B4E9'],['Green','#009E73'],['Yellow','#F0E442'],['Blue','#0072B2'],['Vermilion','#D55E00']];   // Okabe-Ito colour-blind-safe set
+const palette=()=>S.cb?COLS_CB:COLS_STD;
+const SYM=['●','▲','■','◆','★','✚'];
+const CBDEFS=`<pattern id="cb-wood" width="7" height="7" patternUnits="userSpaceOnUse"><rect width="2.4" height="7" fill="rgba(0,0,0,.3)"/></pattern>
+<pattern id="cb-brick" width="7" height="7" patternUnits="userSpaceOnUse"><rect width="7" height="2.4" fill="rgba(0,0,0,.3)"/></pattern>
+<pattern id="cb-sheep" width="8" height="8" patternUnits="userSpaceOnUse"><circle cx="4" cy="4" r="1.7" fill="rgba(0,0,0,.35)"/></pattern>
+<pattern id="cb-wheat" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2.4" height="7" fill="rgba(0,0,0,.3)"/></pattern>
+<pattern id="cb-ore" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="1.6" height="8" fill="rgba(0,0,0,.3)"/><rect width="8" height="1.6" fill="rgba(0,0,0,.3)"/></pattern>`;
+function applyColors(idx,saved){
+  if(saved&&saved.length>=4){saved.forEach((c,i)=>PCOL[i]=c);return;}
+  const P=palette();idx=P[idx]?idx:0;
+  const rest=P.filter((c,i)=>i!==idx);
+  PCOL[0]=P[idx][1];for(let i=1;i<6;i++)PCOL[i]=rest[i-1][1];
+}
+const PNAME=['You','Ruby','Sky','Moss','Fern','Dune'];
+const STYLES={balanced:['⚖️','Balanced','Plays a steady all-round game.'],builder:['🛤️','Road builder','Loves roads and new settlements and chases the Longest Road.'],rusher:['🏙️','City rusher','Hoards wheat and ore for cities and development cards, and plays knights eagerly.'],trader:['🤝','Trader','Proposes and accepts trades more often, and loves ports.']};
+const DEVNAME={knight:'Knight',vp:'Victory Point',road:'Road Building',plenty:'Year of Plenty',mono:'Monopoly'};
+const DEVICON={knight:'🗡️',vp:'🏆',road:'🛤️',plenty:'🎁',mono:'💰'};
+const COST={ship:{wood:1,sheep:1},road:{wood:1,brick:1},settle:{wood:1,brick:1,sheep:1,wheat:1},city:{wheat:2,ore:3},dev:{sheep:1,wheat:1,ore:1}};
+const DIFFDESC={easy:'Easy: bots build haphazardly, skip some actions and accept almost any trade.',normal:'Normal: balanced bots that plan builds and use the bank.',hard:'Hard: bots pick complementary spots, race for cities, target the leader with the robber and drive hard bargains.',expert:'Expert: like Hard, but bots also grab the best spots first, favour 6s and 8s, hit the leader hard, and only trade when it clearly helps them.'};
+
+/* ---------- version & changelog ---------- */
+const VERSION='1.10';
+const CHANGELOG=[
+  {v:'1.10',date:'2026-10-27',items:[
+    'Installable web app: when hosted online, the game can be added to your phone\'s home screen and then opens full-screen like an app and works offline.',
+    '📲 Install button on the start screen and in Settings, with step-by-step instructions for Android (Chrome) and iPhone (Safari).',
+    'Proper app icons (including an Android adaptive icon) and a more complete web-app manifest.']},
+  {v:'1.9',date:'2026-10-22',items:[
+    'New Islands map (Seafarers-style): several islands in open sea. Build ships 🌲🐑 to reach new islands; the first settlement on each new island earns +1 VP. Roads stay on land, ships on water, and they link only at your own settlements and cities.',
+    'Custom game rules (start screen): victory points 8/10/12, starting cards, hand limit, bank rate 4:1 or 3:1 and a friendly robber.',
+    'Bot chat and emotes: bots comment on robberies, cities, awards, trades and the final result (switch in Settings).',
+    'New Expert difficulty: sharper bots that plan around the leader, deny good spots, and value trades by need.',
+    'Four colour themes: Ocean, Night, Parchment and Meadow (Settings).',
+    'Daily challenge: a new board every day, the same for everyone, with a goal of the day and a streak counter.']},
+  {v:'1.8',date:'2026-10-22',items:[
+    'Game log: tap the 📜 button (or the log lines under the board) for the full history of rolls, trades, builds and steals, grouped by round.',
+    'Sound effects and vibration (dice, cards, builds, robber, your turn, victory), each with its own switch in Settings.',
+    'Colour-blind mode: colour-blind-safe player colours, a shape symbol for every player on buildings and roads, and a pattern on every resource tile.',
+    'Bot personalities: Road builder, City rusher, Trader and Balanced. Tap a bot in the top bar to see its style.',
+    'New maps: a fixed Beginner board (same every game) and a Large board with 30 tiles for up to 6 players (24 cards per resource, 34 development cards).',
+    'Career & achievements: lifetime statistics and 14 achievements, saved on this device.',
+    'Installable web app (PWA) files for hosting the game online.']},
+  {v:'1.7',date:'2026-10-22',items:['Cities no longer have a permanent circle around them (the yellow ring now appears only when the rolled number produces for them).']},
+  {v:'1.6',date:'2026-10-22',items:[
+    'Choose the colour of your houses, cities and roads on the start screen (6 colours); the bots take the remaining colours. Your choice is remembered and saved with the game.']},
+  {v:'1.5',date:'2026-10-22',items:[
+    'Clearer placement: while you place a road or settlement, the yellow rolled-tile glow is hidden and the legal spots are drawn bright with a dark outline.',
+    'Tap any spot that is NOT allowed to see why (for example: an opponent\'s settlement cuts your road, a settlement is too close, or the spot is not connected to your roads).']},
+  {v:'1.4',date:'2026-10-22',items:[
+    'Version number shown in the title and in Settings.',
+    'Changelog page in Settings (this list).',
+    'Trade window now shows the cards you hold, with a live preview of what you would have after the trade.']},
+  {v:'1.3',date:'2026-10-22',items:[
+    'Undo for your last road, settlement or city (button replaces Roll after you have rolled).',
+    'Ask before ending your turn when you can still afford to build; confirm step for setup and robber placements.',
+    'Automatic save and resume: continue a game after closing or reloading the page.',
+    'Better trading: all bots answer an offer at once (accept, counter-offer or decline); bots may propose swaps to you, and you can counter them.',
+    'Bank limited to 19 cards per resource, with the real shortage rules and a bank strip on the board.',
+    'Pinch-zoom and drag-pan on the board, zoom buttons, and a landscape side-panel layout (setting: Auto / Portrait / Side panel).']},
+  {v:'1.2',date:'2026-10-22',items:[
+    'Game statistics screen (end of game, or the 📊 button): dice histogram vs. fair dice, victory points over time, cards by resource, spending and losses, builds, dev cards, robber activity and dice luck.']},
+  {v:'1.1',date:'2026-10-22',items:[
+    'Cards fly from the producing tiles into your hand; rolled-number tiles glow; bigger dice with a roll animation.',
+    'New town-style city graphic.',
+    'Settings page: bot action delay, pause between turns, wait-for-tap mode, animations, highlights.',
+    'Robber move shown with an arrow, plus a pop-up showing which card was stolen.',
+    'ℹ info popup in My cards explaining every card.',
+    'Bot difficulty: Easy, Normal, Hard.',
+    'Fix: My cards can now always be opened, and cards bought this turn show a 🔒 badge until they unlock.']},
+  {v:'1.0',date:'2026-10-22',items:[
+    'First release: a Catan-style game ("Hexfarers") for 1–3 bots. Randomised hex island, ports, resources, roads, settlements, cities, development cards, robber, Longest Road, Largest Army, bank and player trades.',
+    'Works offline as a single HTML file; Android project (Capacitor) provided for building an APK.']}
+];
+function changelogModal(inGame){
+  modal(`<div class="hdr"><h3>📜 Changelog</h3><span class="small">Current version ${VERSION}</span></div>
+    <div class="info">${CHANGELOG.map(c=>`<h4>v${c.v} <span class="small" style="font-weight:400">· ${c.date}${c.v===VERSION?' · current':''}</span></h4>${c.items.map(i=>`<p>• ${i}</p>`).join('')}`).join('')}</div>
+    <div class="row"><button id="clb" class="ghost">Back</button></div>`);
+  $('clb').onclick=()=>settingsModal(inGame);
+}
+
+/* ---------- settings (saved on this device) ---------- */
+const DEF={bots:3,diff:'normal',delay:1,turnPause:1.5,step:false,anim:true,hl:true,reveal:false,confirmEnd:true,confirmPick:true,offers:true,layout:'auto',color:0,map:'std',personas:true,sound:true,haptics:true,cb:false,theme:'ocean',chat:true,rules:{vp:10,start:'std',friendly:false,hand:7,rate:4}};
+let S={...DEF,rules:{...DEF.rules}};
+try{Object.assign(S,JSON.parse(localStorage.getItem('hexfarers.settings')||'{}'));}catch(e){}
+S.rules=Object.assign({},DEF.rules,S.rules||{});
+const saveS=()=>{try{localStorage.setItem('hexfarers.settings',JSON.stringify(S));}catch(e){}};
+
+const quick=()=>window.SPEED===0;                    // test hook: no waiting at all
+const animOn=()=>S.anim&&!quick();
+const sleep=ms=>new Promise(r=>setTimeout(r,quick()?0:ms*(window.SPEED===undefined?S.delay:window.SPEED)));
+const pause=ms=>new Promise(r=>setTimeout(r,quick()?0:ms));
+const $=id=>document.getElementById(id);
+let RNG=Math.random;
+function seeded(seed){let a=seed>>>0;return()=>{a=(a+0x6D2B79F5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
+const hashStr=str=>{let h=2166136261;for(const c of str){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;};
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(RNG()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const sum=o=>Object.values(o).reduce((a,b)=>a+b,0);
+const pips=n=>n?6-Math.abs(7-n):0;
+let G=null,V=[],E=[],H=[],PORTS=[];
+const emptyRes=()=>({wood:0,brick:0,sheep:0,wheat:0,ore:0});
+const emptyDev=()=>({knight:0,vp:0,road:0,plenty:0,mono:0});
+/* ---------- statistics ---------- */
+const newPS=()=>({gainDice:emptyRes(),gainSteal:emptyRes(),gainOther:emptyRes(),gainTrade:emptyRes(),spent:emptyRes(),lostSteal:emptyRes(),lostDiscard:emptyRes(),lostMono:emptyRes(),lostTrade:emptyRes(),blocked:emptyRes(),short:0,expected:0,built:{road:0,settle:0,city:0},devBought:emptyDev(),devPlayed:emptyDev(),robberMoves:0,steals:0,stolenFrom:0,bankTrades:0,playerTrades:0,turns:0,maxRoad:0,peak:0,rolled7:0});
+const ST=p=>G.st.p[p];
+function accrueExpected(){
+  for(const h of H){
+    if(!h.num)continue;
+    for(const v of h.verts){const o=V[v].owner;if(o!==-1)ST(o).expected+=pips(h.num)/36*(V[v].city?2:1);}
+  }
+}
+function snapStats(){
+  G.st.vp.push(G.players.map(totVP));
+  G.players.forEach(p=>{const s=ST(p.id);s.peak=Math.max(s.peak,cards(p));});
+}
+function monopolize(p,r){
+  let n=0;
+  for(const q of G.players)if(q.id!==p){n+=q.res[r];ST(q.id).lostMono[r]+=q.res[r];q.res[r]=0;}
+  G.players[p].res[r]+=n;ST(p).gainOther[r]+=n;ST(p).monoBest=Math.max(ST(p).monoBest||0,n);return n;
+}
+const cards=p=>sum(p.res);
+const isAI=p=>G.players[p].ai;
+const pubVP=p=>p.settles+2*p.cities+(G.lr===p.id?2:0)+(G.la===p.id?2:0)+(p.bonus||0);
+const totVP=p=>pubVP(p)+p.dev.vp+p.devNew.vp;
+function log(m){G.log.push({m,t:G.turnId,s:G.phase==='setup'});if(G.log.length>600)G.log.shift();sfxFor(m);chatFor(m);}
+const logText=x=>typeof x==='string'?x:x.m;
+const colorize=t=>t.replace(/\b(You|Ruby|Sky|Moss|Fern|Dune)\b/g,n=>`<span style="color:${PCOL[PNAME.indexOf(n)]};font-weight:700">${n}</span>`);
+/* ---------- sound & haptics ---------- */
+let AC=null;
+function audio(){if(AC)return AC;try{const C=window.AudioContext||window.webkitAudioContext;if(C)AC=new C();}catch(e){}return AC;}
+function tone(f,d,type,v,at,f2){
+  const a=audio();if(!a)return;
+  try{const t=a.currentTime+(at||0),o=a.createOscillator(),g=a.createGain();o.type=type||'sine';o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);
+    g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(v||.12,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(a.destination);o.start(t);o.stop(t+d+.03);}catch(e){}
+}
+const HAPT={turn:[40],roll:[25],robber:[70,40,70],steal:[90],build:[30],win:[80,50,80,50,220],trade:[20],fanfare:[40,30,40]};
+let lastCard=0;
+function sfx(n){
+  if(quick())return;
+  if(S.haptics&&HAPT[n]&&navigator.vibrate){try{navigator.vibrate(HAPT[n]);}catch(e){}}
+  if(!S.sound)return;
+  const a=audio();if(!a)return;
+  if(a.state==='suspended'){try{a.resume();}catch(e){}}
+  switch(n){
+    case 'roll':for(let i=0;i<7;i++)tone(170+Math.random()*220,.05,'square',.05,i*.07);break;
+    case 'card':{const t=Date.now();if(t-lastCard<80)return;lastCard=t;tone(1000,.12,'triangle',.09,0,1450);break;}
+    case 'build':tone(140,.2,'sine',.25,0,60);tone(520,.06,'square',.04,.02);break;
+    case 'turn':tone(660,.15,'sine',.11);tone(880,.22,'sine',.11,.14);break;
+    case 'robber':tone(300,.55,'sawtooth',.08,0,80);break;
+    case 'steal':tone(500,.1,'square',.06);tone(350,.14,'square',.06,.1);break;
+    case 'trade':tone(740,.1,'triangle',.1);tone(990,.18,'triangle',.1,.1);break;
+    case 'dev':[600,760,950].forEach((f,i)=>tone(f,.1,'triangle',.08,i*.07));break;
+    case 'fanfare':[523,659,784].forEach((f,i)=>tone(f,.16,'triangle',.1,i*.11));break;
+    case 'win':[523,659,784,1047,784,1047].forEach((f,i)=>tone(f,.22,'triangle',.12,i*.13));break;
+  }
+}
+const CHAT={
+  city:['Upgrade time! 🏙️','Look at that skyline 😎','Cities win games.'],
+  award:['Mine now. 😎','Try and take it! 😏'],
+  gloat:['Sorry, not sorry. 😈','Nice cards you had. 😉'],
+  robbed:['Hey, that was mine! 😠','You will pay for that! 😤'],
+  trade:['Pleasure doing business! 🤝','Deal! 🤝'],
+  knight:['Knight to the rescue! ⚔️','Charge! ⚔️'],
+  mono:['Mwahaha, thanks! 💰','All your cards are belong to me 💰'],
+  win:['GG! 🏆','Told you so! 😄'],
+  lose:['Well played! 👏','Good game, you earned it! 👏']
+};
+const CHATX={builder:{city:['Roads lead to cities 🛤️'],award:['All those roads paid off 🛤️']},rusher:{city:['Cities win games 🏙️'],knight:['More knights, more power ⚔️']},trader:{trade:['Anyone else want to trade? 🤝'],mono:['A fine trade, really 💰']}};
+let lastChat=0;
+function chat(pid,ev,prob,force){
+  if(!G||!S.chat||quick()||pid<=0||!CHAT[ev]||Math.random()>(prob===undefined?.6:prob))return;
+  const now=Date.now();if(!force&&now-lastChat<2200)return;lastChat=now;
+  const st=G.players[pid]&&G.players[pid].style,lines=[...CHAT[ev],...((CHATX[st]&&CHATX[st][ev])||[])];
+  const txt=lines[Math.floor(Math.random()*lines.length)];
+  G.log.push({m:`💬 ${PNAME[pid]}: ${txt}`,t:G.turnId,s:G.phase==='setup'});
+  const el=document.querySelector('.pl[data-p="'+pid+'"]');if(!el)return;
+  const r=el.getBoundingClientRect(),b=document.createElement('div');
+  b.className='bubble';b.textContent=txt;b.style.left=Math.max(6,Math.min(window.innerWidth-200,r.left))+'px';b.style.top=(r.bottom+6)+'px';b.style.borderColor=PCOL[pid];
+  document.body.appendChild(b);setTimeout(()=>b.classList.add('out'),2300);setTimeout(()=>b.remove(),2800);
+}
+function chatFor(m){
+  if(!G||!S.chat)return;
+  const nm=n=>PNAME.indexOf(n);let x;
+  if(x=m.match(/^(\w+) built a city/)){const p=nm(x[1]);if(p>0)chat(p,'city',.35);}
+  else if(x=m.match(/^(\w+) has the (Longest Road|Largest Army)/)){const p=nm(x[1]);if(p>0)chat(p,'award',.7);}
+  else if(x=m.match(/^(\w+) stole your/)){chat(nm(x[1]),'gloat',.6);}
+  else if(x=m.match(/^You stole 1\S* from (\w+)/)){chat(nm(x[1]),'robbed',.8);}
+  else if(x=m.match(/^(\w+) played a Knight/)){const p=nm(x[1]);if(p>0)chat(p,'knight',.4);}
+  else if(x=m.match(/^(\w+) played Monopoly/)){const p=nm(x[1]);if(p>0)chat(p,'mono',.8);}
+  else if(x=m.match(/^You traded .* with (Ruby|Sky|Moss|Fern|Dune)$/)){chat(nm(x[1]),'trade',.7);}
+  else if(/ wins!$/.test(m)){const w=nm(m.split(' ')[0]);if(w>0)chat(w,'win',1,true);else if(G.n>1)chat(1+Math.floor(Math.random()*(G.n-1)),'lose',1,true);}
+}
+function sfxFor(m){
+  if(/ wins!/.test(m))sfx('win');
+  else if(/built a (road|settlement|city|ship)/.test(m))sfx('build');
+  else if(/Longest Road|Largest Army/.test(m))sfx('fanfare');
+  else if(/traded/.test(m))sfx('trade');
+  else if(/bought/.test(m))sfx('dev');
+}
+document.addEventListener('pointerdown',()=>{if(S.sound&&!quick()){const a=audio();if(a&&a.state==='suspended')try{a.resume();}catch(e){}}},{passive:true});
+
+
+/* ---------- board ---------- */
+// Beginner board: the same every game, balanced (no touching 6/8, no equal numbers or terrains side by side)
+const FIXED={t:['sheep','wheat','wood','wheat','brick','sheep','wheat','sheep','ore','wood','desert','ore','wheat','sheep','brick','wood','brick','wood','ore'],n:[2,8,11,4,12,3,6,6,10,8,0,11,4,5,9,3,9,10,5],ports:['any','wheat','any','ore','any','sheep','any','wood','brick']};
+const rep_=(t,n)=>Array(n).fill(t);
+const SEALAND=new Set(['-1,-2','0,-2','-2,-1','-1,-1','0,-1','-2,0','-1,0','0,0','1,0','-2,1','-1,1','0,1','-2,2','-1,2','2,-3','3,-3','2,-2','3,-2','3,0','2,1','1,2']);
+function buildBoard(map){
+  map=map||'std';
+  const S_=44,big=map==='large',sea=map==='sea';V=[];E=[];H=[];PORTS=[];
+  const vmap=new Map(),emap=new Map(),coords=[];
+  if(big){[3,4,5,6,5,4,3].forEach((c,i)=>{const r=i-3;for(let j=0;j<c;j++){const x=j-(c-1)/2;coords.push([x-r/2,r]);}});}
+  else if(sea){for(let q=-3;q<=3;q++)for(let r=-3;r<=3;r++)if(Math.abs(q+r)<=3)coords.push([q,r]);}
+  else for(let q=-2;q<=2;q++)for(let r=-2;r<=2;r++)if(Math.abs(q+r)<=2)coords.push([q,r]);
+  let terr;
+  if(sea)terr=shuffle([...rep_('wood',5),...rep_('sheep',5),...rep_('wheat',4),...rep_('brick',3),...rep_('ore',3),'desert']);
+  else if(big)terr=shuffle([...rep_('wood',6),...rep_('sheep',6),...rep_('wheat',6),...rep_('brick',5),...rep_('ore',5),'desert','desert']);
+  else if(map==='fixed')terr=FIXED.t.slice().reverse();
+  else terr=shuffle(['wood','wood','wood','wood','sheep','sheep','sheep','sheep','wheat','wheat','wheat','wheat','brick','brick','brick','ore','ore','ore','desert']);
+  for(const [q,r] of coords){
+    const cx=S_*Math.sqrt(3)*(q+r/2),cy=S_*1.5*r;
+    const h={q,r,cx,cy,res:(sea&&!SEALAND.has(q+','+r))?'sea':terr.pop(),num:0,verts:[]};
+    for(let i=0;i<6;i++){
+      const a=Math.PI/180*(60*i-30),x=cx+S_*Math.cos(a),y=cy+S_*Math.sin(a);
+      const k=Math.round(x*10)+','+Math.round(y*10);
+      let id=vmap.get(k);
+      if(id===undefined){id=V.length;V.push({id,x,y,adj:[],edges:[],hexes:[],owner:-1,city:false,port:null,land:true,isl:0});vmap.set(k,id);}
+      h.verts.push(id);V[id].hexes.push(H.length);
+    }
+    H.push(h);
+  }
+  for(const [hi,h] of H.entries())for(let i=0;i<6;i++){
+    const a=h.verts[i],b=h.verts[(i+1)%6],k=Math.min(a,b)+'-'+Math.max(a,b);
+    let id=emap.get(k);
+    if(id===undefined){id=E.length;E.push({id,a,b,owner:-1,n:0,hx:[],kind:null});emap.set(k,id);V[a].edges.push(id);V[b].edges.push(id);V[a].adj.push(b);V[b].adj.push(a);}
+    E[id].n++;E[id].hx.push(hi);
+  }
+  const land=H.filter(h=>h.res!=='desert'&&h.res!=='sea');
+  if(map==='fixed')H.forEach((h,i)=>{h.num=FIXED.n[i];});
+  else for(let t=0;t<(big?2000:500);t++){
+    const nums=shuffle(big?[2,2,3,3,3,4,4,4,5,5,5,6,6,6,8,8,8,9,9,9,10,10,10,11,11,11,12,12]:sea?[2,3,3,4,4,5,5,6,6,8,8,9,9,10,10,11,11,12,4,9]:[2,3,3,4,4,5,5,6,6,8,8,9,9,10,10,11,11,12]);
+    land.forEach((h,i)=>h.num=nums[i]);
+    const red=land.filter(h=>h.num===6||h.num===8);
+    let bad=false;
+    for(const a of red)for(const b of red)if(a!==b&&a.verts.filter(v=>b.verts.includes(v)).length>=2)bad=true;
+    if(!bad)break;
+  }
+  // islands (connected groups of land tiles; island 0 is the biggest)
+  {
+    const ls=H.map((h,i)=>i).filter(i=>H[i].res!=='sea'),seen=new Set(),comps=[];
+    for(const i of ls){
+      if(seen.has(i))continue;const comp=[],st=[i];seen.add(i);
+      while(st.length){const x=st.pop();comp.push(x);for(const j of ls)if(!seen.has(j)&&H[x].verts.filter(v=>H[j].verts.includes(v)).length>=2){seen.add(j);st.push(j);}}
+      comps.push(comp);
+    }
+    comps.sort((a,b)=>b.length-a.length);comps.forEach((c,k)=>c.forEach(i=>{H[i].isl=k;}));
+    H.forEach(h=>{if(h.res==='sea')h.isl=-1;});
+    V.forEach(v=>{const ids=v.hexes.filter(i=>H[i].res!=='sea').map(i=>H[i].isl);v.land=ids.length>0;v.isl=ids.length?ids[0]:-1;});
+  }
+  if(sea){
+    const cand=E.filter(e=>{const L=e.hx.filter(i=>H[i].res!=='sea');return L.length===1&&(e.n===1||e.hx.some(i=>H[i].res==='sea'));}).map(e=>{
+      const lh=H[e.hx.find(i=>H[i].res!=='sea')];return {e,lh,mx:(V[e.a].x+V[e.b].x)/2,my:(V[e.a].y+V[e.b].y)/2};});
+    const types=shuffle(['any','any','any','any','wood','brick','sheep','wheat','ore']),chosen=[];
+    let pool=shuffle(cand.slice());
+    while(chosen.length<9&&pool.length){
+      let best=null,bd=-1;
+      for(const c of pool){const d=chosen.length?Math.min(...chosen.map(o=>Math.hypot(o.mx-c.mx,o.my-c.my))):1e9;if(d>bd+1e-9){bd=d;best=c;}}
+      chosen.push(best);pool=pool.filter(c=>c!==best);
+    }
+    chosen.forEach((c,i)=>{
+      const dx=c.mx-c.lh.cx,dy=c.my-c.lh.cy,d=Math.hypot(dx,dy)||1;
+      PORTS.push({type:types[i],a:c.e.a,b:c.e.b,mx:c.mx,my:c.my,px:c.mx+dx/d*30,py:c.my+dy/d*30});
+      V[c.e.a].port=types[i];V[c.e.b].port=types[i];
+    });
+    return;
+  }
+  const coast=E.filter(e=>e.n===1).map(e=>{const mx=(V[e.a].x+V[e.b].x)/2,my=(V[e.a].y+V[e.b].y)/2;return {e,mx,my,ang:Math.atan2(my,mx)};}).sort((a,b)=>a.ang-b.ang);
+  const pos=big?Array.from({length:11},(_,i)=>Math.floor(i*coast.length/11)):[0,3,7,10,13,17,20,23,27];
+  const types=big?shuffle(['any','any','any','any','any','any','wood','brick','sheep','wheat','ore']):map==='fixed'?FIXED.ports.slice():shuffle(['any','any','any','any','wood','brick','sheep','wheat','ore']);
+  pos.forEach((p,i)=>{
+    const c=coast[p%coast.length],d=Math.hypot(c.mx,c.my)||1;
+    PORTS.push({type:types[i],a:c.e.a,b:c.e.b,mx:c.mx,my:c.my,px:c.mx+c.mx/d*30,py:c.my+c.my/d*30});
+    V[c.e.a].port=types[i];V[c.e.b].port=types[i];
+  });
+}
+function makeDeck(big){const d=[];const add=(t,n)=>{for(let i=0;i<n;i++)d.push(t);};if(big){add('knight',20);add('vp',5);add('road',3);add('plenty',3);add('mono',3);}else{add('knight',14);add('vp',5);add('road',2);add('plenty',2);add('mono',2);}return shuffle(d);}
+
+function newGame(nAI,auto,diff,map,opts){
+  opts=opts||{};
+  if(opts.seed)RNG=seeded(opts.seed);
+  applyColors(S.color);
+  const mp=map||S.map||'std',big=mp==='large';
+  const R=opts.daily?{...DEF.rules}:{...DEF.rules,...(S.rules||{})};
+  if(!big)nAI=Math.min(nAI,3);nAI=Math.min(nAI,5);
+  buildBoard(mp);
+  const n=nAI+1,seq=[],BN=big?24:19;
+  for(let i=0;i<n;i++)seq.push(i);for(let i=n-1;i>=0;i--)seq.push(i);
+  G={n,auto:!!auto,diff:diff||S.diff,players:[],cur:0,phase:'setup',seq,dice:null,rolling:false,robber:H.findIndex(h=>h.res==='desert'),deck:makeDeck(big),map:mp,bankN:BN,rules:R,vpWin:R.vp,daily:opts.daily?{key:opts.daily.key,goalId:opts.daily.goal.id}:null,mode:null,resolve:null,noCancel:false,devPlayed:false,lr:null,la:null,lens:Array(n).fill(0),log:[],over:false,winner:null,lastSettle:null,busy:false,turns:0,turnId:0,bank:{wood:BN,brick:BN,sheep:BN,wheat:BN,ore:BN},undo:[],sel:null,setupI:0,setupStep:0,hl:null,rb:null,shown:null,flash:null,waiting:null,waitMsg:''};
+  for(let i=0;i<n;i++)G.players.push({id:i,res:emptyRes(),dev:emptyDev(),devNew:emptyDev(),knights:0,roads:0,settles:0,cities:0,ships:0,bonus:0,home:[],ai:!!auto||i>0});
+  {const sty=shuffle(['builder','rusher','trader','balanced']);let k=0;
+   for(const p of G.players)if(p.ai)p.style=S.personas?sty[(k++)%4]:'balanced';}
+  RNG=Math.random;
+  G.st={rolls:Array(13).fill(0),vp:[],start:Date.now(),p:G.players.map(()=>newPS())};
+  if(R.start!=='std'){const k=R.start==='pack'?1:3;G.players.forEach(p=>RES.forEach(r=>{p.res[r]+=k;G.bank[r]-=k;ST(p.id).gainOther[r]+=k;}));}
+  fitBoard();closeModal();render();
+  mainFlow();
+}
+
+/* ---------- rules ---------- */
+const can=(p,c)=>Object.keys(c).every(k=>p.res[k]>=c[k]);
+const pay=(p,c)=>{for(const k in c){p.res[k]-=c[k];if(G&&G.bank)G.bank[k]+=c[k];if(G&&G.st)G.st.p[p.id].spent[k]+=c[k];}};
+const RULE=k=>((G&&G.rules)||DEF.rules)[k];
+function settleOK(v,pid,setup){const x=V[v];if(x.owner!==-1)return false;if(x.land===false)return false;if(x.adj.some(a=>V[a].owner!==-1))return false;if(!setup&&!x.edges.some(e=>E[e].owner===pid))return false;return true;}
+function edgeKinds(ed){
+  if(!G||G.map!=='sea'||!ed.hx)return ['road'];
+  const hs=ed.hx.map(i=>H[i].res),k=[];
+  if(hs.some(r=>r!=='sea'))k.push('road');if(hs.some(r=>r==='sea'))k.push('ship');
+  return k;
+}
+function roadOK(e,pid,kind){
+  kind=kind||'road';const ed=E[e];if(ed.owner!==-1)return false;
+  const sea=G&&G.map==='sea';
+  if(sea&&!edgeKinds(ed).includes(kind))return false;
+  return [ed.a,ed.b].some(v=>V[v].owner===pid||(V[v].owner===-1&&V[v].edges.some(f=>E[f].owner===pid&&(!sea||E[f].kind===kind))));
+}
+function robberOK(i,p){
+  if(!RULE('friendly'))return true;
+  const owners=[...new Set(H[i].verts.map(v=>V[v].owner))].filter(o=>o!==-1&&o!==p);
+  return !owners.length||owners.some(o=>pubVP(G.players[o])>2);
+}
+function robberCands(p){
+  let c=H.map((h,i)=>i).filter(i=>i!==G.robber&&H[i].res!=='sea');
+  const f=c.filter(i=>robberOK(i,p));return f.length?f:c;
+}
+function recalcBonus(pid){
+  if(G.map!=='sea')return;
+  const pl=G.players[pid],set=new Set();
+  V.forEach(v=>{if(v.owner===pid&&v.isl>=0)set.add(v.isl);});
+  pl.bonus=[...set].filter(i=>!(pl.home||[]).includes(i)).length;
+}
+function ratio(pid,r){let b=RULE('rate')||4;for(const v of V)if(v.owner===pid&&v.port){if(v.port==='any')b=Math.min(b,3);else if(v.port===r)b=Math.min(b,2);}return b;}
+function longestRoad(pid){
+  let best=0;
+  const sea=G&&G.map==='sea';
+  const dfs=(v,used,len,lk)=>{
+    best=Math.max(best,len);
+    if(len>0&&V[v].owner!==-1&&V[v].owner!==pid)return;
+    for(const e of V[v].edges){
+      if(E[e].owner!==pid||used.has(e))continue;
+      if(sea&&lk&&E[e].kind!==lk&&V[v].owner!==pid)continue;      // road and ship routes only join at your own buildings
+      used.add(e);dfs(E[e].a===v?E[e].b:E[e].a,used,len+1,E[e].kind);used.delete(e);
+    }
+  };
+  for(let v=0;v<V.length;v++)if(V[v].edges.some(e=>E[e].owner===pid))dfs(v,new Set(),0,null);
+  return best;
+}
+function updateLR(){
+  G.lens=G.players.map(p=>longestRoad(p.id));
+  G.players.forEach(p=>{ST(p.id).maxRoad=Math.max(ST(p.id).maxRoad,G.lens[p.id]);});
+  const mx=Math.max(...G.lens),leaders=G.lens.map((l,i)=>l===mx?i:-1).filter(i=>i>=0),old=G.lr;
+  if(mx<5)G.lr=null;else if(G.lr!==null&&leaders.includes(G.lr)){}else G.lr=leaders.length===1?leaders[0]:null;
+  if(G.lr!==old&&G.lr!==null)log(`${PNAME[G.lr]} has the Longest Road (${mx})`);
+}
+function checkArmy(p){const pl=G.players[p];if(pl.knights>=3&&G.la!==p&&(G.la===null||pl.knights>G.players[G.la].knights)){G.la=p;log(`${PNAME[p]} has the Largest Army`);}}
+function placeSettle(pid,v,free,grant){
+  const pl=G.players[pid];if(!free)pay(pl,COST.settle);
+  V[v].owner=pid;V[v].city=false;pl.settles++;ST(pid).built.settle++;log(`${PNAME[pid]} built a settlement`);
+  if(G.map==='sea'){const old=pl.bonus||0;if(free&&!(pl.home||[]).includes(V[v].isl)){pl.home=pl.home||[];pl.home.push(V[v].isl);}recalcBonus(pid);if(pl.bonus>old)log(`${PNAME[pid]} reached a new island: +1 VP`);}
+  if(grant)for(const hi of V[v].hexes)if(H[hi].res!=='desert'&&H[hi].res!=='sea'){pl.res[H[hi].res]++;G.bank[H[hi].res]--;ST(pid).gainOther[H[hi].res]++;}
+  updateLR();
+}
+function placeShip(pid,e,free){const pl=G.players[pid];if(!free)pay(pl,COST.ship);E[e].owner=pid;E[e].kind='ship';pl.ships=(pl.ships||0)+1;ST(pid).built.ship=(ST(pid).built.ship||0)+1;log(`${PNAME[pid]} built a ship`);updateLR();}
+function placeRoad(pid,e,free){const pl=G.players[pid];if(!free)pay(pl,COST.road);E[e].owner=pid;E[e].kind='road';pl.roads++;ST(pid).built.road++;log(`${PNAME[pid]} built a road`);updateLR();}
+function placeCity(pid,v){const pl=G.players[pid];pay(pl,COST.city);V[v].city=true;pl.settles--;pl.cities++;ST(pid).built.city++;log(`${PNAME[pid]} built a city`);}
+function checkWin(p){
+  if(G.over)return;
+  if(totVP(G.players[p])>=(G.vpWin||10)){G.over=true;G.winner=p;log(`${PNAME[p]} wins!`);snapStats();clearSave();recordGame();render();showWin();}
+}
+function distribute(s){
+  const gain=G.players.map(emptyRes),src=G.players.map(()=>[]);
+  for(let i=0;i<H.length;i++){
+    const h=H[i];if(h.num!==s)continue;
+    for(const v of h.verts){
+      const o=V[v].owner;if(o===-1)continue;
+      const n=V[v].city?2:1;
+      if(i===G.robber){ST(o).blocked[h.res]+=n;continue;}
+      gain[o][h.res]+=n;src[o].push({hi:i,res:h.res,n});
+    }
+  }
+  // the bank holds a limited number of each resource (19, or 24 on the large map)
+  for(const r of RES){
+    const owed=G.players.filter(p=>gain[p.id][r]>0);
+    const total=owed.reduce((a,p)=>a+gain[p.id][r],0);
+    if(total<=G.bank[r])continue;
+    if(owed.length===1){
+      const o=owed[0].id,left=G.bank[r];
+      ST(o).short+=gain[o][r]-left;gain[o][r]=left;
+      log(`The bank only has ${left}${EMO[r]} left.`);
+    }else{
+      owed.forEach(p=>{ST(p.id).short+=gain[p.id][r];gain[p.id][r]=0;});
+      log(`The bank is short of ${EMO[r]}: nobody collects it.`);
+    }
+    G.players.forEach(p=>{let left=gain[p.id][r];src[p.id]=src[p.id].filter(e=>{if(e.res!==r)return true;e.n=Math.min(e.n,left);left-=e.n;return e.n>0;});});
+  }
+  let any=false;
+  gain.forEach((g,i)=>{const t=RES.filter(r=>g[r]).map(r=>g[r]+EMO[r]).join(' ');if(t){any=true;RES.forEach(r=>{G.players[i].res[r]+=g[r];G.bank[r]-=g[r];ST(i).gainDice[r]+=g[r];});log(`${PNAME[i]} gets ${t}`);}});
+  if(!any)log('Nobody collects resources.');
+  return {gain,src};
+}
+
+/* ---------- animation helpers ---------- */
+let toastTok=0;
+async function toast(html,ms,scaled=true){
+  if(quick()||ms<=0)return;
+  const t=$('toast'),my=++toastTok;
+  t.innerHTML=html;t.classList.add('show');
+  await(scaled?sleep(ms):pause(ms));
+  if(my===toastTok)t.classList.remove('show');
+}
+function popChip(r,txt,neg){
+  const c=document.querySelector('.chip[data-r="'+r+'"]');if(!c)return;
+  const s=document.createElement('span');s.className='pop'+(neg?' neg':'');s.textContent=txt;c.appendChild(s);
+  c.classList.add(neg?'loss':'gain');
+}
+function flyCard(fromEl,toEl,emoji){
+  return new Promise(res=>{
+    if(!fromEl||!toEl||!document.body.animate){res();return;}
+    const d=document.createElement('div');d.className='fly';d.textContent=emoji;document.body.appendChild(d);
+    const A=fromEl.getBoundingClientRect(),B=toEl.getBoundingClientRect();
+    const fx=A.left+A.width/2,fy=A.top+A.height/2,tx=B.left+B.width/2,ty=B.top+B.height/2;
+    const dur=750*Math.min(S.delay,1.6);
+    d.animate([{transform:`translate(${fx}px,${fy}px) scale(1.5)`},{transform:`translate(${(fx+tx)/2}px,${Math.min(fy,ty)-30}px) scale(1.25)`,offset:.5},{transform:`translate(${tx}px,${ty}px) scale(.8)`}],{duration:dur,easing:'ease-in-out',fill:'forwards'});
+    setTimeout(()=>{d.remove();res();},dur+30);
+  });
+}
+async function animateGains(s,gain,src,before){
+  if(!gain.some(g=>sum(g)>0)){await sleep(350);return;}
+  if(G.hl!==null&&!quick())await sleep(750);                // let the glowing tiles be seen first
+  G.flash={};
+  gain.forEach((g,i)=>{if(i!==0&&sum(g))G.flash[i]=RES.filter(r=>g[r]).map(r=>'+'+g[r]+EMO[r]).join(' ');});
+  renderTop();
+  if(!quick()&&sum(gain[0])){
+    if(animOn()){
+      G.shown={...before[0]};renderPanel();
+      for(const e of src[0]){
+        const ps=[];
+        for(let i=0;i<e.n;i++)ps.push((async()=>{
+          await pause(i*170);
+          await flyCard(document.querySelector('[data-hx="'+e.hi+'"]'),document.querySelector('.chip[data-r="'+e.res+'"]'),EMO[e.res]);
+          G.shown[e.res]++;renderPanel();popChip(e.res,'+1');sfx('card');
+        })());
+        await Promise.all(ps);
+      }
+      G.shown=null;renderPanel();
+    }else{
+      renderPanel();RES.forEach(r=>{if(gain[0][r])popChip(r,'+'+gain[0][r]);});sfx('card');
+    }
+  }
+  if(Object.keys(G.flash).length)await sleep(600);
+  G.flash=null;renderTop();
+}
+
+async function rollDice(p){
+  sfx('roll');
+  G.hl=null;if(G.rb&&G.rb.turnId!==G.turnId)G.rb=null;
+  if(animOn()){
+    G.rolling=true;
+    for(let i=0;i<8;i++){G.dice=[1+Math.floor(Math.random()*6),1+Math.floor(Math.random()*6)];renderPanel();await pause(70);}
+    G.rolling=false;
+  }
+  const d1=1+Math.floor(Math.random()*6),d2=1+Math.floor(Math.random()*6),s=d1+d2;
+  G.dice=[d1,d2];G.st.rolls[s]++;ST(p).turns++;if(s===7)ST(p).rolled7++;accrueExpected();
+  log(`${PNAME[p]} rolled ${s}`);render();
+  if(!quick())await sleep(350);
+  if(s===7){
+    const names=[];
+    for(const q of G.players){const c=cards(q);if(c>RULE('hand')){const need=Math.floor(c/2);if(q.ai){autoDiscard(q,need);names.push(`${PNAME[q.id]} discarded ${need}`);}else await humanDiscard(q,need);}}
+    render();
+    if(names.length)await toast('💥 Seven! '+names.join(' • '),1500);
+    await robberSequence(p);
+  }else{
+    const before=G.players.map(pl=>({...pl.res}));
+    const {gain,src}=distribute(s);
+    if(S.hl)G.hl=s;
+    render();
+    await animateGains(s,gain,src,before);
+  }
+  render();
+}
+function autoDiscard(q,need){
+  for(let i=0;i<need;i++){const r=RES.slice().sort((a,b)=>q.res[b]-q.res[a])[0];q.res[r]--;G.bank[r]++;ST(q.id).lostDiscard[r]++;}
+  log(`${PNAME[q.id]} discarded ${need} cards`);
+}
+async function robberSequence(p){
+  const from=G.robber;
+  let h;
+  if(isAI(p)){await sleep(350);h=aiRobberHex(p);}else h=await pickBoard('robber');
+  if(h==null)h=robberCands(p)[0];
+  sfx('robber');G.robber=h;G.rb={from,to:h,turnId:G.turnId};ST(p).robberMoves++;log(`${PNAME[p]} moved the robber`);
+  const victims=[...new Set(H[h].verts.map(v=>V[v].owner))].filter(o=>o!==-1&&o!==p&&cards(G.players[o])>0);
+  let vic=null,stolen=null;
+  if(victims.length===1)vic=victims[0];
+  else if(victims.length>1){
+    if(isAI(p))vic=G.diff==='easy'?victims[Math.floor(Math.random()*victims.length)]:victims.sort((a,b)=>totVP(G.players[b])-totVP(G.players[a]))[0];
+    else{render();vic=await chooseVictim(victims);}
+  }
+  if(vic!==null){
+    const v=G.players[vic],pool=[];RES.forEach(r=>{for(let i=0;i<v.res[r];i++)pool.push(r);});
+    stolen=pool[Math.floor(Math.random()*pool.length)];v.res[stolen]--;G.players[p].res[stolen]++;
+    ST(p).gainSteal[stolen]++;ST(vic).lostSteal[stolen]++;ST(p).steals++;ST(vic).stolenFrom++;
+    log(p===0?`You stole 1${EMO[stolen]} from ${PNAME[vic]}`:vic===0?`${PNAME[p]} stole your 1${EMO[stolen]}`:`${PNAME[p]} stole a card from ${PNAME[vic]}`);
+  }
+  render();
+  if(stolen&&(p===0||vic===0))sfx('steal');
+  if(stolen){if(vic===0)popChip(stolen,'−1',true);if(p===0)popChip(stolen,'+1');}
+  if(!quick()){
+    const hx=H[h],tile=hx.res==='desert'?'🏜️ Desert':`${EMO[hx.res]} ${hx.num}`;
+    const who=p===0?'You':PNAME[p];
+    let html=`<div>🥷 ${who} moved the robber to <b>${tile}</b></div>`;
+    if(stolen){
+      const show=(p===0||vic===0||S.reveal);
+      html+=`<div>${who} stole from ${vic===0?'<b>you</b>':PNAME[vic]}:</div><div class="cardbig">${show?EMO[stolen]:'❓'}</div>`;
+    }else html+='<div class="small">Nobody to steal from</div>';
+    await toast(html,(p===0||vic===0)?2800:2000);
+  }
+}
+
+/* ---------- AI ---------- */
+const NOISE={easy:6,normal:1,hard:.25,expert:.05};
+const hardish=()=>G.diff==='hard'||G.diff==='expert';
+const noise=()=>Math.random()*NOISE[G.diff];
+function vScore(v,pid){
+  let s=0;const seen=new Set();
+  for(const hi of V[v].hexes){const h=H[hi];if(h.res==='desert')continue;s+=pips(h.num);seen.add(h.res);}
+  s+=seen.size*1.5;if(V[v].port)s+=1.5;
+  if(pid!==undefined&&G.players[pid]){
+    const sy=G.players[pid].style;
+    if(sy==='rusher'){if(seen.has('ore'))s+=1.5;if(seen.has('wheat'))s+=1.5;}
+    else if(sy==='builder'){if(seen.has('wood'))s+=1.5;if(seen.has('brick'))s+=1.5;}
+    else if(sy==='trader'&&V[v].port)s+=2.5;
+  }
+  if(hardish()&&pid!==undefined){
+    const own=new Set();
+    for(const w of V)if(w.owner===pid)for(const hi of w.hexes)if(H[hi].res!=='desert')own.add(H[hi].res);
+    for(const r of seen)if(!own.has(r))s+=2.5;
+    if(seen.has('wheat')&&seen.has('ore'))s+=1.5;
+  }
+  if(G.diff==='expert'&&pid!==undefined)for(const hi of V[v].hexes){const n=H[hi].num;if(n===6||n===8)s+=.8;}
+  return s;
+}
+const bestBy=(list,f)=>{let b=null,bs=-1e9;for(const x of list){const s=f(x);if(s>bs){bs=s;b=x;}}return b;};
+const distOK=v=>V[v].owner===-1&&V[v].land!==false&&V[v].adj.every(a=>V[a].owner===-1);
+function edgeScore(e,pid){
+  const ed=E[e];let best=0;
+  for(const o of [ed.a,ed.b]){
+    if(V[o].owner===pid)continue;
+    if(distOK(o))best=Math.max(best,vScore(o,pid));
+    for(const w of V[o].adj)if(distOK(w))best=Math.max(best,vScore(w,pid)*0.8);
+  }
+  return best+noise()*0.5;
+}
+function bestRoadEdge(p){
+  let b=null,bs=-1;
+  for(const e of E){if(!roadOK(e.id,p))continue;const s=edgeScore(e.id,p);if(s>bs){bs=s;b=e.id;}}
+  return b;
+}
+const legalSettles=p=>V.filter(x=>settleOK(x.id,p,false));
+function aiSettleSetup(p){
+  const c=V.filter(v=>settleOK(v.id,p,true));
+  const top=G.diff==='expert'?c.slice().sort((a,b)=>vScore(b.id)-vScore(a.id)).slice(0,2).map(v=>v.id):[];   // expert bots take the best spots first
+  return bestBy(c,v=>vScore(v.id,p)+noise()+(top.includes(v.id)?2:0)).id;
+}
+function aiRoadSetup(p,v){
+  const opts=V[v].edges.filter(e=>E[e].owner===-1&&edgeKinds(E[e]).includes('road'));
+  return bestBy(opts,e=>edgeScore(e,p));
+}
+function aiRobberHex(p){
+  const cand=robberCands(p);
+  if(G.diff==='easy'&&Math.random()<.6)return cand[Math.floor(Math.random()*cand.length)];
+  return bestBy(cand,i=>{
+    const h=H[i];let s=Math.random();
+    for(const v of h.verts){
+      const o=V[v].owner;if(o===-1)continue;
+      const w=pips(h.num)*(V[v].city?2:1);
+      if(o===p)s-=w*(G.diff==='expert'?2.5:1.5);
+      else s+=w*(G.diff==='expert'?Math.pow(1+totVP(G.players[o])/4,3):G.diff==='hard'?Math.pow(1+totVP(G.players[o])/5,2):(1+totVP(G.players[o])/10));
+    }
+    return s;
+  });
+}
+function planTrades(pl,p,cost){
+  const res={...pl.res},trades=[],bk={...G.bank};
+  for(const need of RES){
+    while(res[need]<(cost[need]||0)){
+      let src=null,best=-1;
+      for(const r of RES){
+        if(r===need)continue;
+        const sur=res[r]-(cost[r]||0),rt=ratio(p,r);
+        if(sur>=rt&&sur>best){best=sur;src=r;}
+      }
+      if(!src||bk[need]<1)return null;
+      const rt=ratio(p,src);res[src]-=rt;res[need]++;bk[src]+=rt;bk[need]--;trades.push([src,need,rt]);
+    }
+  }
+  return trades;
+}
+function aiGoals0(p){
+  const pl=G.players[p],sp=legalSettles(p),goals=[];
+  const cityOk=pl.cities<4&&pl.settles>0,setOk=pl.settles<5&&sp.length>0,roadOk=pl.roads<15&&bestRoadEdge(p)!==null,devOk=G.deck.length>0;
+  if(hardish()&&pl.settles+pl.cities<4){
+    if(setOk)goals.push('settle');if(cityOk)goals.push('city');if(!setOk&&roadOk)goals.push('road');if(devOk)goals.push('dev');
+  }else{
+    if(cityOk)goals.push('city');if(setOk)goals.push('settle');
+    if(roadOk&&(!sp.length||pl.settles>=5))goals.push('road');
+    if(devOk)goals.push('dev');
+  }
+  if(G.diff==='easy'){shuffle(goals);if(roadOk&&Math.random()<.3)goals.push('road');}
+  if(G.diff!=='easy'&&pl.style==='builder'){
+    const rd=roadOk&&pl.roads<Math.min(13,4+2*(pl.settles+pl.cities));
+    const o=[];if(setOk)o.push('settle');if(rd)o.push('road');if(cityOk)o.push('city');if(devOk)o.push('dev');
+    return o;
+  }
+  if(G.diff!=='easy'&&pl.style==='rusher'){
+    const o=[];if(cityOk)o.push('city');if(devOk)o.push('dev');if(setOk)o.push('settle');if(roadOk&&!setOk)o.push('road');
+    return o;
+  }
+  return goals;
+}
+function aiGoals(p){
+  const g=aiGoals0(p),pl=G.players[p];
+  if(G.map==='sea'&&(pl.ships||0)<15&&bestShipEdge(p)!==null){
+    if(!legalSettles(p).length)g.unshift('ship');else g.push('ship');
+  }
+  return g;
+}
+function shipScore(e,p){
+  const ed=E[e],own=new Set();
+  V.forEach(v=>{if(v.owner===p&&v.isl>=0)own.add(v.isl);});
+  const seen=new Set([ed.a,ed.b]),fr=[[ed.a,0],[ed.b,0]];let best=0;
+  while(fr.length){
+    const [v,d]=fr.shift();
+    if(distOK(v)&&!own.has(V[v].isl))best=Math.max(best,(vScore(v,p)+3)*Math.pow(.75,d));
+    if(d<3)for(const w of V[v].adj)if(!seen.has(w)){seen.add(w);fr.push([w,d+1]);}
+  }
+  return best>0?best+noise()*.5:0;
+}
+function bestShipEdge(p){let b=null,bs=0.5;for(const e of E){if(!roadOK(e.id,p,'ship'))continue;const sc=shipScore(e.id,p);if(sc>bs){bs=sc;b=e.id;}}return b;}
+function aiStep(p){
+  const pl=G.players[p];
+  if(G.diff==='easy'&&Math.random()<.2)return false;      // easy bots sometimes just stop
+  const useDev=G.diff!=='easy'||Math.random()<.5;
+  if(!G.devPlayed&&useDev){
+    if(pl.dev.road>0&&pl.roads<14&&bestRoadEdge(p)!==null){
+      pl.dev.road--;G.devPlayed=true;ST(p).devPlayed.road++;log(`${PNAME[p]} played Road Building`);
+      for(let i=0;i<2;i++){const e=bestRoadEdge(p);if(e!==null&&pl.roads<15)placeRoad(p,e,true);}
+      return true;
+    }
+    if(pl.dev.plenty>0&&sum(G.bank)>=2){
+      pl.dev.plenty--;G.devPlayed=true;ST(p).devPlayed.plenty++;
+      for(let k=0;k<2;k++){const r=RES.filter(x=>G.bank[x]>0).sort((a,b)=>pl.res[a]-pl.res[b])[0];pl.res[r]++;G.bank[r]--;ST(p).gainOther[r]++;}
+      log(`${PNAME[p]} played Year of Plenty`);return true;
+    }
+    if(pl.dev.mono>0){
+      pl.dev.mono--;G.devPlayed=true;ST(p).devPlayed.mono++;
+      const r=RES.slice().sort((a,b)=>pl.res[a]-pl.res[b])[0];
+      const n=monopolize(p,r);
+      log(`${PNAME[p]} played Monopoly on ${EMO[r]} (took ${n})`);return true;
+    }
+  }
+  const sp=legalSettles(p),goals=aiGoals(p);
+  for(const g of goals){
+    const cost=COST[g];
+    const tr=can(pl,cost)?[]:((G.diff!=='easy'||Math.random()<.5)?planTrades(pl,p,cost):null);
+    if(!tr)continue;
+    for(const [s,n,rt] of tr){pl.res[s]-=rt;pl.res[n]++;ST(p).lostTrade[s]+=rt;ST(p).gainTrade[n]++;ST(p).bankTrades++;G.bank[s]+=rt;G.bank[n]--;log(`${PNAME[p]} traded ${rt}${EMO[s]} for 1${EMO[n]} with the bank`);}
+    if(g==='city'){const v=bestBy(V.filter(x=>x.owner===p&&!x.city),x=>vScore(x.id,p)+noise());placeCity(p,v.id);}
+    else if(g==='settle'){const v=bestBy(sp,x=>vScore(x.id,p)+noise());placeSettle(p,v.id,false,false);}
+    else if(g==='road'){placeRoad(p,bestRoadEdge(p),false);}
+    else if(g==='ship'){const se=bestShipEdge(p);if(se===null)continue;placeShip(p,se,false);}
+    else{pay(pl,COST.dev);const c=G.deck.pop();pl.devNew[c]++;ST(p).devBought[c]++;log(`${PNAME[p]} bought a development card`);}
+    return true;
+  }
+  return false;
+}
+async function aiTurn(p){
+  const pl=G.players[p];
+  G.phase='roll';render();await sleep(500);
+  if(pl.dev.knight>0&&!G.devPlayed&&(H[G.robber].verts.some(v=>V[v].owner===p)||(hardish()&&pl.knights>=2)||(G.diff==='expert'&&G.players.some(q=>q.id!==p&&pubVP(q)>=(G.vpWin||10)-4))||(pl.style==='rusher'&&pl.knights>=1))){
+    pl.dev.knight--;pl.knights++;G.devPlayed=true;ST(p).devPlayed.knight++;log(`${PNAME[p]} played a Knight`);checkArmy(p);
+    await robberSequence(p);checkWin(p);if(G.over)return;
+  }
+  await rollDice(p);G.phase='main';render();
+  await aiMaybeOffer(p);
+  for(let g=0;g<25&&!G.over;g++){
+    if(!aiStep(p))break;
+    render();checkWin(p);await sleep(650);
+  }
+}
+
+/* ---------- flow ---------- */
+async function mainFlow(){await setupPhase();await turnLoop();}
+async function setupPhase(){
+  while(G.setupI<G.seq.length){
+    const i=G.setupI,p=G.seq[i];G.cur=p;
+    if(G.setupStep===0){
+      render();
+      let v;
+      if(isAI(p)){await sleep(450);v=aiSettleSetup(p);}else v=await pickBoard('settleSetup');
+      placeSettle(p,v,true,i>=G.n);G.lastSettle=v;G.setupStep=1;render();saveNow();
+    }
+    let e;
+    if(isAI(p)){await sleep(350);e=aiRoadSetup(p,G.lastSettle);}else e=await pickBoard('roadSetup');
+    placeRoad(p,e,true);G.setupStep=0;G.setupI++;render();saveNow();
+  }
+  G.cur=0;G.phase='roll';snapStats();saveNow();
+}
+function waitContinue(msg){return new Promise(res=>{G.waiting=res;G.waitMsg=msg;render();});}
+async function turnLoop(){
+  while(!G.over&&G.turns<2000){
+    const p=G.cur;
+    if(isAI(p)){
+      saveNow();G.busy=true;G.turns++;G.phase='roll';render();
+      await toast(`<span class="dot" style="background:${PCOL[p]}"></span>${PNAME[p]}'s turn`,S.turnPause*1000,false);
+      await aiTurn(p);
+      if(G.over)break;
+      nextPlayer();render();
+      if(S.step&&!quick()&&!G.auto&&isAI(G.cur))await waitContinue(`${PNAME[p]} finished. Tap Continue when ready.`);
+      else if(!quick())await pause(Math.min(S.turnPause*400,1500));
+    }else{
+      G.phase='roll';G.busy=false;render();
+      sfx('turn');toast('<b>Your turn!</b>',900,false);
+      return;
+    }
+  }
+}
+function nextPlayer(){
+  const pl=G.players[G.cur];
+  for(const k in pl.devNew){pl.dev[k]+=pl.devNew[k];pl.devNew[k]=0;}
+  snapStats();G.undo=[];
+  G.devPlayed=false;G.turnId++;G.cur=(G.cur+1)%G.n;
+}
+const canAct=()=>!G.over&&G.cur===0&&!G.auto&&!G.busy&&!G.mode&&G.phase==='main';
+
+/* ---------- human actions ---------- */
+function targets(){
+  const m=G.mode;if(!m)return null;
+  if(m==='settle')return {v:V.filter(x=>settleOK(x.id,0,false)).map(x=>x.id)};
+  if(m==='settleSetup')return {v:V.filter(x=>settleOK(x.id,0,true)).map(x=>x.id)};
+  if(m==='city')return {v:V.filter(x=>x.owner===0&&!x.city).map(x=>x.id)};
+  if(m==='road')return {e:E.filter(e=>roadOK(e.id,0)).map(e=>e.id)};
+  if(m==='ship')return {e:E.filter(e=>roadOK(e.id,0,'ship')).map(e=>e.id)};
+  if(m==='roadSetup')return {e:V[G.lastSettle].edges.filter(e=>E[e].owner===-1&&edgeKinds(E[e]).includes('road'))};
+  if(m==='robber')return {h:robberCands(0)};
+  return null;
+}
+// Why is this edge ('e12') or corner ('v5') not allowed in the current placement mode?
+function whyNot(mode,key){
+  const id=+key.slice(1),pid=0;
+  if(key[0]==='e'){
+    const ed=E[id];
+    if(ed.owner!==-1)return ed.owner===pid?`You already have a road here.`:`${PNAME[ed.owner]} already has a road here.`;
+    if(mode==='roadSetup')return `Your starting road must touch the settlement you just placed.`;
+    if(mode==='ship'&&!edgeKinds(ed).includes('ship'))return `Ships sail on water: pick an edge that touches the sea.`;
+    if(mode==='road'&&!edgeKinds(ed).includes('road'))return `Roads need land: this edge is open sea. Build a ship instead.`;
+    for(const v of [ed.a,ed.b]){
+      const o=V[v].owner;
+      if(o!==-1&&o!==pid&&V[v].edges.some(f=>E[f].owner===pid))return `${PNAME[o]}'s settlement is on this corner. A road can't continue through an opponent's settlement.`;
+    }
+    return mode==='ship'?`A new ship must start at one of your own settlements, cities or ships.`:`A new road must start at one of your own settlements, cities or roads.`;
+  }
+  const v=V[id];
+  if(mode==='city')return v.owner===pid&&!v.city?'':(v.owner===pid?`This is already a city.`:`Tap one of your own settlements to upgrade it.`);
+  if(!v.land)return `Settlements need land: this corner only touches the sea.`;
+  if(v.owner!==-1)return `This spot is already built on.`;
+  if(v.adj.some(a=>V[a].owner!==-1))return `Too close to another settlement: settlements need at least two road lengths between them.`;
+  if(mode==='settle')return `A new settlement must connect to one of your roads.`;
+  return `You can't build here.`;
+}
+function pickBoard(mode){
+  return new Promise(res=>{
+    G.mode=mode;G.sel=null;G.resolve=res;
+    const t=targets();
+    if(!((t.v&&t.v.length)||(t.e&&t.e.length)||(t.h&&t.h.length))){G.mode=null;G.resolve=null;log('No legal spot for that.');render();res(null);return;}
+    render();
+  });
+}
+function finishPick(val){const r=G.resolve;G.resolve=null;G.mode=null;G.sel=null;if(r)r(val);}
+async function humanRoll(){
+  if(G.busy)return;G.busy=true;render();
+  await rollDice(0);
+  if(!G.over)G.phase='main';
+  G.busy=false;render();
+}
+async function humanBuild(kind){
+  const t=await pickBoard(kind);
+  if(t==null){render();return;}
+  const snap={kind,id:t,cost:COST[kind],prevLr:G.lr,prevMax:ST(0).maxRoad};
+  if(kind==='road')placeRoad(0,t,false);else if(kind==='ship')placeShip(0,t,false);else if(kind==='settle')placeSettle(0,t,false,false);else placeCity(0,t);
+  G.undo.push(snap);
+  render();checkWin(0);
+}
+function undoBuild(){
+  if(G.over||!G.undo.length)return;
+  const u=G.undo.pop(),pl=G.players[0],c=u.cost;
+  if(Object.keys(c).some(k=>G.bank[k]<c[k])){G.undo.push(u);log('Cannot undo: the bank has given those cards away.');render();return;}
+  if(u.kind==='road'){E[u.id].owner=-1;E[u.id].kind=null;pl.roads--;ST(0).built.road--;}
+  else if(u.kind==='ship'){E[u.id].owner=-1;E[u.id].kind=null;pl.ships--;ST(0).built.ship--;}
+  else if(u.kind==='settle'){V[u.id].owner=-1;pl.settles--;ST(0).built.settle--;}
+  else{V[u.id].city=false;pl.settles++;pl.cities--;ST(0).built.city--;}
+  recalcBonus(0);
+  for(const k in c){pl.res[k]+=c[k];ST(0).spent[k]-=c[k];G.bank[k]-=c[k];}
+  G.lr=u.prevLr;ST(0).maxRoad=u.prevMax;updateLR();
+  log(`You took back the ${u.kind==='settle'?'settlement':u.kind}`);
+  render();
+}
+function affordable(){
+  const me=G.players[0],out=[];
+  if(me.roads<15&&can(me,COST.road)&&E.some(e=>roadOK(e.id,0)))out.push('a road 🌲🧱');
+  if(me.settles<5&&can(me,COST.settle)&&legalSettles(0).length)out.push('a settlement');
+  if(G.map==='sea'&&(me.ships||0)<15&&can(me,COST.ship)&&E.some(e=>roadOK(e.id,0,'ship')))out.push('a ship 🌲🐑');
+  if(me.cities<4&&me.settles>0&&can(me,COST.city))out.push('a city');
+  if(G.deck.length&&can(me,COST.dev))out.push('a development card');
+  return out;
+}
+function tryEndTurn(){
+  const a=S.confirmEnd?affordable():[];
+  if(!a.length){endTurn();return;}
+  const c=cards(G.players[0]);
+  modal(`<h3>End your turn?</h3><div class="small">You can still afford:</div>
+    <div style="margin:6px 0;font-size:15px">${a.map(x=>'• '+x).join('<br>')}</div>
+    ${c>RULE('hand')?`<div class="note">You hold ${c} cards: a 7 would make you discard ${Math.floor(c/2)}.</div>`:''}
+    <label class="tog"><input type="checkbox" id="noask">Don't ask again (change in Settings)</label>
+    <div class="row"><button id="keep" class="ghost">Keep playing</button><button id="endnow">End turn</button></div>`);
+  $('keep').onclick=closeModal;
+  $('endnow').onclick=()=>{if($('noask').checked){S.confirmEnd=false;saveS();}closeModal();endTurn();};
+}
+function humanBuy(){
+  const pl=G.players[0];pay(pl,COST.dev);const c=G.deck.pop();pl.devNew[c]++;ST(0).devBought[c]++;
+  log(`You bought: ${DEVNAME[c]} (playable next turn)`);render();popChip('dev','+1');checkWin(0);
+}
+function endTurn(){nextPlayer();G.busy=true;render();turnLoop();}
+async function humanPlay(t){
+  const p=G.players[0];G.busy=true;G.undo=[];p.dev[t]--;G.devPlayed=true;ST(0).devPlayed[t]++;log(`You played ${DEVNAME[t]}`);
+  if(t==='knight'){p.knights++;checkArmy(0);render();await robberSequence(0);}
+  else if(t==='road'){
+    G.noCancel=true;
+    for(let i=0;i<2&&p.roads<15;i++){const e=await pickBoard('road');if(e==null)break;placeRoad(0,e,true);render();}
+    G.noCancel=false;
+  }else if(t==='plenty'){const picks=await plentyModal();picks.forEach(r=>{p.res[r]++;G.bank[r]--;ST(0).gainOther[r]++;});}
+  else{const r=await monoModal();const n=monopolize(0,r);log(`You took ${n}${EMO[r]}`);}
+  G.busy=false;render();checkWin(0);
+}
+
+/* ---------- modals ---------- */
+function modal(html){$('mbox').style.maxWidth='';$('mbox').innerHTML=html;$('modal').classList.remove('hidden');}
+function closeModal(){$('modal').classList.add('hidden');}
+const stepperRow=(k,r,val)=>`<div class="stp"><span class="e">${EMO[r]}</span><button data-k="${k}" data-r="${r}" data-d="1">+</button><b>${val}</b><button data-k="${k}" data-r="${r}" data-d="-1">−</button></div>`;
+const bindSteppers=(cb)=>$('mbox').querySelectorAll('button[data-k]').forEach(b=>b.onclick=()=>cb(b.dataset.k,b.dataset.r,+b.dataset.d));
+function humanDiscard(q,need){
+  return new Promise(res=>{
+    const d=emptyRes();
+    const draw=()=>{
+      const tot=sum(d);
+      modal(`<h3>Robber! Discard ${need} cards</h3><div class="row">${RES.map(r=>stepperRow('x',r,d[r])).join('')}</div><div class="small">Selected ${tot}/${need}. You hold ${RES.map(r=>EMO[r]+q.res[r]).join(' ')}</div><div class="row"><button id="ok" ${tot===need?'':'disabled'}>Discard</button></div>`);
+      bindSteppers((k,r,dd)=>{const nv=d[r]+dd;if(nv<0||nv>q.res[r]||tot+dd>need)return;d[r]=nv;draw();});
+      $('ok').onclick=()=>{RES.forEach(r=>{q.res[r]-=d[r];G.bank[r]+=d[r];ST(q.id).lostDiscard[r]+=d[r];});log(`You discarded ${need} cards`);closeModal();res();};
+    };
+    draw();
+  });
+}
+function chooseVictim(list){
+  return new Promise(res=>{
+    modal(`<h3>Steal from whom?</h3><div class="row">${list.map(i=>`<button data-v="${i}" style="background:${PCOL[i]}">${PNAME[i]} (${cards(G.players[i])} cards)</button>`).join('')}</div>`);
+    $('mbox').querySelectorAll('button[data-v]').forEach(b=>b.onclick=()=>{closeModal();res(+b.dataset.v);});
+  });
+}
+function plentyModal(){
+  return new Promise(res=>{
+    const picks=[];
+    const left=r=>G.bank[r]-picks.filter(x=>x===r).length;
+    const draw=()=>{
+      modal(`<h3>Year of Plenty</h3><div class="small">Take 2 resources from the bank (${picks.length}/2). Numbers show what the bank has left.</div><div class="row">${RES.map(r=>`<button data-r="${r}" class="big" ${left(r)>0?'':'disabled'}>${EMO[r]}<small> ${left(r)}</small></button>`).join('')}</div>`);
+      $('mbox').querySelectorAll('button[data-r]').forEach(b=>b.onclick=()=>{picks.push(b.dataset.r);if(picks.length===2){closeModal();res(picks);}else draw();});
+    };
+    draw();
+  });
+}
+function monoModal(){
+  return new Promise(res=>{
+    modal(`<h3>Monopoly</h3><div class="small">Take every card of one type from all opponents</div><div class="row">${RES.map(r=>`<button data-r="${r}" class="big">${EMO[r]}</button>`).join('')}</div>`);
+    $('mbox').querySelectorAll('button[data-r]').forEach(b=>b.onclick=()=>{closeModal();res(b.dataset.r);});
+  });
+}
+function expertAccept(q,give,get){
+  if(totVP(G.players[0])>=(G.vpWin||10)-3)return false;
+  const cost=COST[aiGoals(q.id)[0]]||{};
+  const wt=r=>{const have=q.res[r],need=cost[r]||0;return have<need?3:have-need>=2?.5:1;};
+  let gain=0;RES.forEach(r=>{gain+=wt(r)*(give[r]-get[r]);});
+  return gain>=1.5;
+}
+function aiAccept(q,give,get){
+  const rec=sum(give),gv=sum(get);
+  if(G.diff==='easy')return true;
+  if(G.diff==='expert')return expertAccept(q,give,get);
+  if(rec<gv)return false;
+  if(q.style==='trader'&&totVP(G.players[0])<(G.vpWin||10)-3)return true;
+  if(totVP(G.players[0])>=(G.vpWin||10)-2)return false;
+  if(G.diff==='hard'){
+    if(totVP(G.players[0])>=(G.vpWin||10)-3)return false;
+    if(rec<=gv)return false;
+    return RES.some(r=>give[r]>0&&q.res[r]===0);
+  }
+  return rec>gv?true:Math.random()<0.6;
+}
+const fmtRes=o=>RES.filter(r=>o[r]).map(r=>o[r]+EMO[r]).join(' ')||'nothing';
+const mkRes=(r,n)=>{const o=emptyRes();o[r]=n;return o;};
+// your hand, with a colored preview of the change if the proposed trade went through
+const handRow=(give,get)=>`<div class="myhand">${RES.map(r=>{const d=(get[r]||0)-(give[r]||0);return `<span>${EMO[r]}<b>${G.players[0].res[r]}</b><small class="${d>0?'good':'bad'}">${d?(d>0?'+':'−')+Math.abs(d):''}</small></span>`;}).join('')}</div>`;
+function applyPlayerTrade(q,give,get){
+  const p=G.players[0];
+  RES.forEach(r=>{
+    p.res[r]+=get[r]-give[r];q.res[r]+=give[r]-get[r];
+    ST(0).gainTrade[r]+=get[r];ST(0).lostTrade[r]+=give[r];
+    ST(q.id).gainTrade[r]+=give[r];ST(q.id).lostTrade[r]+=get[r];
+  });
+  ST(0).playerTrades++;ST(q.id).playerTrades++;
+  log(`You traded ${fmtRes(give)} for ${fmtRes(get)} with ${PNAME[q.id]}`);
+}
+// How would bot q answer if the human gives `give` and gets `get`?
+function botResponse(q,give,get){
+  const me=G.players[0];
+  const has=(who,o)=>RES.every(r=>who.res[r]>=o[r]);
+  if(!has(q,get))return {type:'decline',why:"doesn't have those cards"};
+  if(aiAccept(q,give,get))return {type:'accept',give:{...give},get:{...get}};
+  const tries=[];
+  for(const r of RES)if(me.res[r]-give[r]>0){const g={...give};g[r]++;tries.push({give:g,get:{...get},score:q.res[r]===0?0:1});}
+  if(sum(get)>1)for(const r of RES)if(get[r]>0){const t={...get};t[r]--;tries.push({give:{...give},get:t,score:2});}
+  tries.sort((a,b)=>a.score-b.score);
+  for(const t of tries)if(has(q,t.get)&&aiAccept(q,t.give,t.get))return {type:'counter',give:t.give,get:t.get};
+  return {type:'decline',why:'not interested'};
+}
+function tradeModal(){
+  const p=G.players[0],give=emptyRes(),get=emptyRes();let note='',resp=null;
+  const reset=()=>RES.forEach(r=>{give[r]=0;get[r]=0;});
+  const respRow=(r,i)=>{
+    const dot=`<span class="dot" style="background:${PCOL[r.q.id]}"></span>`;
+    if(r.type==='decline')return `<div class="resp no"><span>${dot}${PNAME[r.q.id]}: ${r.why}</span></div>`;
+    return `<div class="resp"><span>${dot}<b>${PNAME[r.q.id]}</b> ${r.type==='accept'?'accepts':'counters'}<br><small>You give ${fmtRes(r.give)} · you get ${fmtRes(r.get)}</small></span><button data-deal="${i}">Deal</button></div>`;
+  };
+  const draw=()=>{
+    modal(`<h3>Trade</h3><div class="small">Bank rates: ${RES.map(r=>EMO[r]+ratio(0,r)+':1').join('  ')}</div>
+    <div class="sec">Your cards <span class="small">(colored numbers = change after this trade)</span></div>${handRow(give,get)}
+    <div class="sec">You give</div><div class="row">${RES.map(r=>stepperRow('give',r,give[r])).join('')}</div>
+    <div class="sec">You get</div><div class="row">${RES.map(r=>stepperRow('get',r,get[r])).join('')}</div>
+    <div class="note">${note}</div>
+    <div class="row"><button id="tb">Trade with bank</button><button id="to">Ask players</button></div>
+    ${resp?`<div class="sec">Answers</div>${resp.map(respRow).join('')}`:''}
+    <div class="row"><button id="tc" class="ghost">Close</button></div>`);
+    bindSteppers((k,r,d)=>{const o=k==='give'?give:get,nv=o[r]+d;if(nv<0||nv>9||(k==='give'&&nv>p.res[r]))return;o[r]=nv;note='';resp=null;draw();});
+    $('tc').onclick=closeModal;
+    $('tb').onclick=()=>{
+      const gs=RES.filter(r=>give[r]>0),tot=sum(get);
+      resp=null;
+      if(gs.length!==1){note='Bank: give exactly one resource type.';return draw();}
+      const g=gs[0],rt=ratio(0,g);
+      if(give[g]%rt!==0||give[g]/rt!==tot||get[g]>0||tot===0){note=`Bank: ${rt}${EMO[g]} buys 1 card of another type.`;return draw();}
+      const dry=RES.find(r=>get[r]>G.bank[r]);
+      if(dry){note=`The bank has no more ${EMO[dry]}.`;return draw();}
+      p.res[g]-=give[g];RES.forEach(r=>p.res[r]+=get[r]);
+      G.bank[g]+=give[g];RES.forEach(r=>G.bank[r]-=get[r]);
+      ST(0).lostTrade[g]+=give[g];RES.forEach(r=>ST(0).gainTrade[r]+=get[r]);ST(0).bankTrades++;
+      log(`You traded ${give[g]}${EMO[g]} with the bank`);reset();note='Traded!';render();draw();
+    };
+    $('to').onclick=()=>{
+      if(!sum(give)||!sum(get)){note='Choose what you give and what you want.';return draw();}
+      resp=G.players.filter(x=>x.id!==0).map(q=>({q,...botResponse(q,give,get)}));
+      note='';draw();
+    };
+    $('mbox').querySelectorAll('button[data-deal]').forEach(b=>b.onclick=()=>{
+      const r=resp[+b.dataset.deal];
+      if(!RES.every(x=>p.res[x]>=r.give[x])||!RES.every(x=>r.q.res[x]>=r.get[x])){note='That deal is no longer possible.';resp=null;return draw();}
+      applyPlayerTrade(r.q,r.give,r.get);note=`Deal done with ${PNAME[r.q.id]}!`;reset();resp=null;render();draw();
+    });
+  };
+  draw();
+}
+// A bot proposes a trade to the human. Resolves when the human has answered.
+function offerModal(q,give,get){
+  const me=G.players[0];
+  return new Promise(done=>{
+    const draw=(g0,t0,nt)=>{
+      modal(`<h3><span class="dot" style="background:${PCOL[q.id]}"></span>${PNAME[q.id]} offers a trade</h3>
+        <div style="text-align:center;margin:10px 0;font-size:18px">You get <b>${fmtRes(t0)}</b><br>You give <b>${fmtRes(g0)}</b></div>
+        <div class="sec">Your cards</div>${handRow(g0,t0)}
+        <div class="note">${nt||''}</div>
+        <div class="row"><button id="oa">Accept</button><button id="oc" class="ghost">Counter</button><button id="od" class="ghost">Decline</button></div>`);
+      $('oa').onclick=()=>{
+        if(!RES.every(r=>me.res[r]>=g0[r])||!RES.every(r=>q.res[r]>=t0[r])){draw(g0,t0,'That deal is no longer possible.');return;}
+        applyPlayerTrade(q,g0,t0);closeModal();render();done('accept');
+      };
+      $('od').onclick=()=>{log(`You declined ${PNAME[q.id]}'s offer`);closeModal();done('decline');};
+      $('oc').onclick=()=>counter(g0,t0);
+    };
+    const counter=(g0,t0)=>{
+      const gv={...g0},gt={...t0};let nt='';
+      const d2=()=>{
+        modal(`<h3>Counter-offer to ${PNAME[q.id]}</h3>
+          <div class="sec">Your cards</div>${handRow(gv,gt)}
+          <div class="sec">You give</div><div class="row">${RES.map(r=>stepperRow('give',r,gv[r])).join('')}</div>
+          <div class="sec">You get</div><div class="row">${RES.map(r=>stepperRow('get',r,gt[r])).join('')}</div>
+          <div class="note">${nt}</div>
+          <div class="row"><button id="cp">Propose</button><button id="cb" class="ghost">Back</button></div>`);
+        bindSteppers((k,r,d)=>{const o=k==='give'?gv:gt,nv=o[r]+d;if(nv<0||nv>9||(k==='give'&&nv>me.res[r]))return;o[r]=nv;nt='';d2();});
+        $('cb').onclick=()=>draw(g0,t0);
+        $('cp').onclick=()=>{
+          if(!sum(gv)||!sum(gt)){nt='Choose what you give and what you get.';return d2();}
+          const rs=botResponse(q,gv,gt);
+          if(rs.type==='accept'){applyPlayerTrade(q,gv,gt);closeModal();render();done('accept');}
+          else if(rs.type==='counter')draw(rs.give,rs.get,`${PNAME[q.id]} counters with this:`);
+          else draw(g0,t0,`${PNAME[q.id]}: ${rs.why}. The first offer still stands.`);
+        };
+      };
+      d2();
+    };
+    draw(give,get);
+  });
+}
+// Before building, a bot that is exactly one card short may offer the human a swap.
+async function aiMaybeOffer(p){
+  if(G.auto||!S.offers||G.over)return;
+  const pl=G.players[p],me=G.players[0];
+  if(cards(me)===0)return;
+  if(Math.random()>(G.diff==='easy'?0.25:pl.style==='trader'?0.75:0.45))return;
+  if(hardish()&&totVP(me)>=(G.vpWin||10)-3)return;
+  for(const g of aiGoals(p)){
+    const cost=COST[g];
+    if(can(pl,cost))return;
+    const lack=RES.filter(r=>pl.res[r]<(cost[r]||0));
+    const missing=lack.reduce((a,r)=>a+(cost[r]-pl.res[r]),0);
+    if(missing!==1)continue;
+    const want=lack[0];
+    if(me.res[want]<1)continue;
+    const spareOf=r=>pl.res[r]-(cost[r]||0);
+    const spare=RES.filter(r=>r!==want&&spareOf(r)>=1).sort((a,b)=>spareOf(b)-spareOf(a))[0];
+    if(!spare)continue;
+    const k=G.diff==='easy'?Math.min(2,spareOf(spare)):1;
+    render();
+    await offerModal(pl,mkRes(want,1),mkRes(spare,k));
+    return;
+  }
+}
+function devModal(){
+  const p=G.players[0];
+  const myTurn=G.cur===0&&!G.busy&&!G.over&&!G.auto&&!G.mode;
+  const rows=['knight','road','plenty','mono'].map(t=>{
+    const n=p.dev[t],nw=p.devNew[t];
+    const timing=t==='knight'?(G.phase==='roll'||G.phase==='main'):G.phase==='main';
+    const ok=myTurn&&n>0&&!G.devPlayed&&timing&&(t!=='plenty'||sum(G.bank)>=2);
+    return `<div class="drow"><span>${DEVICON[t]} ${DEVNAME[t]} ×${n}${nw?` <small>(+${nw} new 🔒)</small>`:''}</span><button data-p="${t}" ${ok?'':'disabled'}>Play</button></div>`;
+  }).join('');
+  const newTot=sum(p.devNew);
+  let hint='';
+  if(!myTurn)hint='You can play cards during your own turn.';
+  else if(G.devPlayed)hint='You already played a development card this turn. The limit is one per turn.';
+  else if(newTot)hint='🔒 Cards bought this turn unlock at the start of your next turn.';
+  modal(`<div class="hdr"><h3>Your cards</h3><button id="info" class="ibtn" aria-label="What do the cards do?">ℹ</button></div>${rows}
+    <div class="drow"><span>🏆 Victory Point cards ×${p.dev.vp+p.devNew.vp}</span><span class="small">count automatically</span></div>
+    <div class="note">${hint}</div>
+    <div class="row"><button id="tc" class="ghost">Close</button></div>`);
+  $('tc').onclick=closeModal;
+  $('info').onclick=infoModal;
+  $('mbox').querySelectorAll('button[data-p]').forEach(b=>b.onclick=()=>{closeModal();humanPlay(b.dataset.p);});
+}
+function infoModal(){
+  modal(`<div class="hdr"><h3>What do the cards do?</h3></div><div class="info">
+    <h4>Development cards (buy: 🐑 🌾 ⛰️)</h4>
+    <p>${DEVICON.knight} <b>Knight</b> (14 in deck): move the robber to another tile and steal 1 random card from a player there. Play it even before rolling. Whoever has played the most Knights (at least 3) holds <b>Largest Army</b>: +2 points.</p>
+    <p>${DEVICON.vp} <b>Victory Point</b> (5): worth 1 point. Stays hidden and counts automatically; no need to play it.</p>
+    <p>${DEVICON.road} <b>Road Building</b> (2): build 2 roads for free.</p>
+    <p>${DEVICON.plenty} <b>Year of Plenty</b> (2): take any 2 resource cards from the bank.</p>
+    <p>${DEVICON.mono} <b>Monopoly</b> (2): name a resource; every opponent gives you all of theirs of that type.</p>
+    <p><b>Limits:</b> one development card per turn (Victory Points excepted), and not on the turn you bought it.</p>
+    <h4>Resource cards</h4>
+    <p>🌲 Wood: roads, settlements &nbsp; 🧱 Brick: roads, settlements<br>🐑 Sheep: settlements, dev cards &nbsp; 🌾 Wheat: settlements, cities, dev cards<br>⛰️ Ore: cities, dev cards</p>
+    <h4>Building</h4>
+    <p>Road 🌲🧱 · Settlement 🌲🧱🐑🌾 (1 pt) · City 🌾🌾⛰️⛰️⛰️ (2 pts) · Dev card 🐑🌾⛰️.<br>Longest Road (5+ roads) and Largest Army are worth 2 points each. First to ${G.vpWin||10} wins.</p>
+  </div><div class="row"><button id="back" class="ghost">Back</button></div>`);
+  $('back').onclick=devModal;
+}
+/* ---------- install as an app (PWA) ---------- */
+let installEv=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEv=e;});
+window.addEventListener('appinstalled',()=>{installEv=null;});
+const isStandalone=()=>{try{return (window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||window.navigator.standalone===true;}catch(e){return false;}};
+function installModal(back){
+  const local=location.protocol==='file:';
+  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  let body;
+  if(isStandalone())body='<p>Hexfarers is already running as an installed app. 🎉</p>';
+  else if(local)body=`<p><b>This copy is a file on your device</b>, and phones can only install web apps from a web address.</p>
+    <p>Put the Hexfarers folder online once (for example by dragging it onto <b>app.netlify.com/drop</b>, or with GitHub Pages), then open that address on your phone and tap Install again. The folder contains a README with the exact steps.</p>`;
+  else if(installEv)body='<p>Your browser can install Hexfarers right now. It will get its own icon on your home screen, open full-screen and work offline.</p><div class="row"><button id="doinst">📲 Install now</button></div>';
+  else if(ios)body=`<p><b>iPhone / iPad (Safari):</b></p><p>1. Tap the <b>Share</b> button (square with an arrow).<br>2. Scroll and tap <b>Add to Home Screen</b>.<br>3. Tap <b>Add</b>.</p><p class="small">It must be opened in Safari, not inside another app.</p>`;
+  else body=`<p><b>Android (Chrome):</b></p><p>1. Tap the <b>⋮ menu</b> (top right).<br>2. Tap <b>Install app</b> or <b>Add to Home screen</b>.<br>3. Confirm with <b>Install</b>.</p><p class="small">If you do not see it yet, play for a few seconds or reload the page once; Chrome shows the option when the app files have loaded.</p>`;
+  modal(`<div class="hdr"><h3>📲 Install on your phone</h3></div>${body}<div class="row"><button id="ib" class="ghost">Back</button></div>`);
+  $('ib').onclick=back;
+  if($('doinst'))$('doinst').onclick=async()=>{try{installEv.prompt();await installEv.userChoice;}catch(e){}installEv=null;back();};
+}
+/* ---------- rules, daily challenge ---------- */
+const rulesLabel=()=>JSON.stringify(S.rules)!==JSON.stringify(DEF.rules)?' •':'';
+function rulesModal(back){
+  const R=S.rules;
+  const sg=(k,opts)=>`<div class="seg">${opts.map(([v,l])=>`<button data-rule="${k}" data-val="${v}" class="${String(R[k])===String(v)?'on':''}">${l}</button>`).join('')}</div>`;
+  modal(`<div class="hdr"><h3>⚖️ Game rules</h3></div><div class="small">Changes apply to the next new game.</div>
+    <div class="sec">Victory points to win</div>${sg('vp',[[8,'8'],[10,'10 (standard)'],[12,'12']])}
+    <div class="sec">Starting cards</div>${sg('start',[['std','None'],['pack','1 of each'],['rich','3 of each']])}
+    <div class="sec">Hand limit before a 7 makes you discard</div>${sg('hand',[[7,'7 (standard)'],[9,'9'],[99,'No limit']])}
+    <div class="sec">Bank trade rate</div>${sg('rate',[[4,'4:1 (standard)'],[3,'3:1']])}
+    <div class="sec">Friendly robber</div>${sg('friendly',[[false,'Off'],[true,'On']])}
+    <div class="small">Friendly robber: the robber cannot go on a tile where every opponent has 2 or fewer visible points.</div>
+    <div class="row"><button id="rb1">Done</button></div><div class="row"><button id="rbr" class="ghost">Reset to standard rules</button></div>`);
+  $('mbox').querySelectorAll('button[data-rule]').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.rule;let v=b.dataset.val;
+    if(v==='true')v=true;else if(v==='false')v=false;else if(k!=='start')v=+v;
+    S.rules[k]=v;saveS();rulesModal(back);
+  });
+  $('rb1').onclick=back;
+  $('rbr').onclick=()=>{S.rules={...DEF.rules};saveS();rulesModal(back);};
+}
+const DKEY='hexfarers.daily';
+const DGOALS=[
+  {id:'speed',text:'Win in 90 dice rolls or fewer.',t:x=>x.won&&x.rolls<=90},
+  {id:'road',text:'Win while holding the Longest Road.',t:x=>x.won&&G.lr===0},
+  {id:'army',text:'Win while holding the Largest Army.',t:x=>x.won&&G.la===0},
+  {id:'cities',text:'Win with 4 cities.',t:x=>x.won&&x.me.cities>=4},
+  {id:'notrade',text:'Win without trading with other players.',t:x=>x.won&&x.st.playerTrades===0},
+  {id:'cards',text:'Win after buying at least 4 development cards.',t:x=>x.won&&sum(x.st.devBought)>=4}
+];
+const MAPNAME={std:'Standard',fixed:'Beginner',sea:'Islands',large:'Large'};
+function dayKey(off){const d=new Date();d.setDate(d.getDate()+(off||0));return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function dailySpec(key){const h=hashStr('hexfarers-'+key);return {key,seed:h||1,map:['std','fixed','sea'][h%3],diff:['normal','hard'][(h>>>3)%2],goal:DGOALS[(h>>>5)%DGOALS.length]};}
+function readDaily(){try{const d=JSON.parse(localStorage.getItem(DKEY)||'null');if(d&&d.days)return d;}catch(e){}return {days:{},streak:0,best:0,last:null};}
+function recordDaily(ctx){
+  const d=readDaily(),key=G.daily.key,goal=DGOALS.find(g=>g.id===G.daily.goalId)||DGOALS[0];
+  const met=!!goal.t(ctx),day=d.days[key]||(d.days[key]={tries:0,wins:0,met:false,bestRolls:null});
+  day.tries++;if(ctx.won){day.wins++;if(day.bestRolls===null||ctx.rolls<day.bestRolls)day.bestRolls=ctx.rolls;}
+  if(met&&!day.met){day.met=true;d.streak=d.last===dayKey(-1)?(d.streak||0)+1:1;d.last=key;d.best=Math.max(d.best||0,d.streak);}
+  try{localStorage.setItem(DKEY,JSON.stringify(d));}catch(e){}
+  return {met,streak:d.streak||0,msg:met?`Goal completed: ${goal.text} Streak: ${d.streak} day${d.streak===1?'':'s'}.`:`Goal not met: ${goal.text}`};
+}
+function dailyModal(back){
+  const sp=dailySpec(dayKey()),d=readDaily(),day=d.days[sp.key]||{tries:0,wins:0,met:false};
+  const cur=(d.last===dayKey()||d.last===dayKey(-1))?d.streak:0;
+  modal(`<div class="hdr"><h3>📅 Daily challenge</h3><span class="small">${sp.key}</span></div>
+    <div class="small">Everyone gets the same board and bots today. Dice are still random.</div>
+    <div class="crow"><span>Map</span><b>${MAPNAME[sp.map]}</b></div>
+    <div class="crow"><span>Opponents</span><b>3 bots · ${sp.diff}</b></div>
+    <div class="sec">Today's goal</div><div class="ach"><b>🎯 ${sp.goal.text}</b>Standard rules apply.</div>
+    <div class="crow"><span>Your attempts today</span><b>${day.tries}${day.met?' · ✅ goal done':''}</b></div>
+    <div class="crow"><span>Daily streak</span><b>${cur} 🔥 (best ${d.best||0})</b></div>
+    <div class="row"><button id="dgo">${day.tries?'Try again':'Start today\'s challenge'}</button></div>
+    <div class="row"><button id="dbk" class="ghost">Back</button></div>`);
+  $('dbk').onclick=back;
+  $('dgo').onclick=()=>newGame(3,false,sp.diff,sp.map,{daily:sp,seed:sp.seed});
+}
+/* ---------- career & achievements ---------- */
+const CKEY='hexfarers.career';
+const newCareer=()=>({games:0,wins:0,byDiff:{easy:{g:0,w:0},normal:{g:0,w:0},hard:{g:0,w:0}},bestVP:0,fastest:null,rolls:0,res:emptyRes(),ach:{}});
+function readCareer(){try{const c=JSON.parse(localStorage.getItem(CKEY)||'null');if(c&&c.games!==undefined)return Object.assign(newCareer(),c);}catch(e){}return newCareer();}
+function writeCareer(c){try{localStorage.setItem(CKEY,JSON.stringify(c));}catch(e){}}
+const ACH=[
+  {id:'first_win',icon:'🏆',name:'First victory',desc:'Win a game.',t:x=>x.won},
+  {id:'hard_win',icon:'🧠',name:'Mastermind',desc:'Win a game against Hard bots.',t:x=>x.won&&(G.diff==='hard'||G.diff==='expert')},
+  {id:'expert_win',icon:'🎓',name:'Grandmaster',desc:'Win a game against Expert bots.',t:x=>x.won&&G.diff==='expert'},
+  {id:'islander',icon:'⛵',name:'Island hopper',desc:'Win on the Islands map.',t:x=>x.won&&G.map==='sea'},
+  {id:'daily_hero',icon:'📅',name:'Daily hero',desc:'Complete a daily challenge goal.',t:x=>x.dailyMet},
+  {id:'streak3',icon:'🔥',name:'On a roll',desc:'Reach a 3-day daily challenge streak.',t:x=>x.dailyStreak>=3},
+  {id:'road_baron',icon:'🛣️',name:'Road Baron',desc:'Finish a game holding the Longest Road.',t:x=>G.lr===0},
+  {id:'iron_army',icon:'⚔️',name:'Iron Army',desc:'Finish a game holding the Largest Army.',t:x=>G.la===0},
+  {id:'city_planner',icon:'🏙️',name:'City Planner',desc:'Finish a game with 4 cities.',t:x=>x.me.cities>=4},
+  {id:'cornered',icon:'💰',name:'Cornered the market',desc:'Take 6 or more cards with one Monopoly.',t:x=>(x.st.monoBest||0)>=6},
+  {id:'thick',icon:'🛡️',name:'Thick-skinned',desc:'Have 5 or more cards stolen from you in one game.',t:x=>x.st.stolenFrom>=5},
+  {id:'silver',icon:'🤝',name:'Silver tongue',desc:'Complete 5 or more player trades in one game.',t:x=>x.st.playerTrades>=5},
+  {id:'speed',icon:'⚡',name:'Speed run',desc:'Win in 60 dice rolls or fewer.',t:x=>x.won&&x.rolls<=60},
+  {id:'comeback',icon:'🔥',name:'Comeback kid',desc:'Win after trailing the leader by 3 or more points.',t:x=>x.won&&G.st.vp.some(v=>Math.max(...v.slice(1))-v[0]>=3)},
+  {id:'untouched',icon:'🕊️',name:'Untouchable',desc:'Win without ever losing a card to the robber, a discard or a monopoly.',t:x=>x.won&&x.st.stolenFrom===0&&sum(x.st.lostDiscard)===0&&sum(x.st.lostMono)===0},
+  {id:'table',icon:'🌍',name:'Full table',desc:'Win on the Large map against 4 or more bots.',t:x=>x.won&&G.map==='large'&&G.n>=5},
+  {id:'veteran',icon:'🎖️',name:'Veteran',desc:'Finish 10 games.',t:x=>x.c.games>=10},
+  {id:'champion',icon:'👑',name:'Champion',desc:'Win 10 games.',t:x=>x.c.wins>=10}
+];
+function recordGame(){
+  if(!G||G.auto||G.recorded)return;G.recorded=true;
+  try{
+    const c=readCareer(),won=G.winner===0,me=G.players[0],st=ST(0);
+    const d=c.byDiff[G.diff]||(c.byDiff[G.diff]={g:0,w:0});
+    const rolls=G.st.rolls.reduce((a,b)=>a+b,0);
+    c.games++;d.g++;if(won){c.wins++;d.w++;if(c.fastest===null||rolls<c.fastest)c.fastest=rolls;}
+    c.bestVP=Math.max(c.bestVP,totVP(me));c.rolls+=rolls;RES.forEach(r=>{c.res[r]=(c.res[r]||0)+st.gainDice[r];});
+    G.newAch=[];
+    const ctx={won,rolls,me,st,c,dailyMet:false,dailyStreak:0};
+    if(G.daily){const dr=recordDaily(ctx);ctx.dailyMet=dr.met;ctx.dailyStreak=dr.streak;G.dailyMsg=dr.msg;}
+    for(const a of ACH)if(!c.ach[a.id]&&a.t(ctx)){c.ach[a.id]=new Date().toISOString().slice(0,10);G.newAch.push(a);}
+    writeCareer(c);
+  }catch(e){}
+}
+function careerModal(back){
+  const c=readCareer(),pct=(a,b)=>b?Math.round(100*a/b)+'%':'–';
+  const fav=RES.slice().sort((a,b)=>(c.res[b]||0)-(c.res[a]||0))[0];
+  const n=ACH.filter(a=>c.ach[a.id]).length;
+  modal(`<div class="hdr"><h3>🏅 Career</h3><span class="small">saved on this device</span></div>
+    <div class="crow"><span>Games finished</span><b>${c.games}</b></div>
+    <div class="crow"><span>Wins</span><b>${c.wins} (${pct(c.wins,c.games)})</b></div>
+    ${['easy','normal','hard','expert'].map(k=>`<div class="crow"><span>· ${k[0].toUpperCase()+k.slice(1)} bots</span><b>${(c.byDiff[k]||{w:0}).w}/${(c.byDiff[k]||{g:0}).g}</b></div>`).join('')}
+    <div class="crow"><span>Best score</span><b>${c.bestVP} VP</b></div>
+    <div class="crow"><span>Fastest win</span><b>${c.fastest===null?'–':c.fastest+' rolls'}</b></div>
+    <div class="crow"><span>Dice rolls seen</span><b>${c.rolls}</b></div>
+    <div class="crow"><span>Most collected resource</span><b>${c.games&&c.res[fav]?EMO[fav]+' '+c.res[fav]:'–'}</b></div>
+    <div class="sec">Achievements ${n}/${ACH.length}</div>
+    <div class="achg">${ACH.map(a=>`<div class="ach ${c.ach[a.id]?'':'lock'}"><b>${a.icon} ${a.name}</b>${a.desc}${c.ach[a.id]?`<br><span class="small">unlocked ${c.ach[a.id]}</span>`:''}</div>`).join('')}</div>
+    <div class="row"><button id="cb1" class="ghost">Back</button></div>
+    <div class="row"><button id="crs" class="ghost">Reset career</button></div>`);
+  $('cb1').onclick=back;
+  $('crs').onclick=function(){if(this.dataset.c){try{localStorage.removeItem(CKEY);}catch(e){}careerModal(back);}else{this.dataset.c=1;this.textContent='Tap again to erase all career data';}};
+}
+function logModal(){
+  if(!G)return;
+  let h='',last=null;
+  for(const x of G.log.slice().reverse()){
+    const e=typeof x==='string'?{m:x,t:0,s:false}:x;
+    const lab=e.s?'Setup':'Round '+(Math.floor(e.t/G.n)+1);
+    if(lab!==last){h+=`<div class="lg-r">${lab}</div>`;last=lab;}
+    h+=`<div class="lg-l">${colorize(e.m)}</div>`;
+  }
+  modal(`<div class="hdr"><h3>📜 Game log</h3><span class="small">newest first</span></div><div class="logbox">${h||'<div class="small">Nothing yet.</div>'}</div><div class="row"><button id="lgc">Close</button></div>`);
+  $('lgc').onclick=closeModal;
+}
+function botModal(id){
+  const p=G.players[id],st=STYLES[p.style||'balanced'];
+  modal(`<h3><span class="dot" style="background:${PCOL[id]}"></span>${PNAME[id]} ${st[0]}</h3>
+    <div class="crow"><span>Style</span><b>${st[1]}</b></div>
+    <div class="small" style="margin:6px 0">${st[2]}</div>
+    <div class="crow"><span>Public victory points</span><b>${pubVP(p)}</b></div>
+    <div class="crow"><span>Cards in hand</span><b>${cards(p)}</b></div>
+    <div class="crow"><span>Knights played</span><b>${p.knights}</b></div>
+    <div class="crow"><span>Longest road</span><b>${G.lens[id]}</b></div>
+    <div class="row"><button id="bc">Close</button></div>`);
+  $('bc').onclick=closeModal;
+}
+function showWin(){
+  const rows=G.players.map(p=>`<div class="drow"><span style="color:${PCOL[p.id]}">${PNAME[p.id]}</span><b>${totVP(p)} VP</b></div>`).join('');
+  const dm=G.dailyMsg?`<div class="ach"><b>📅 Daily challenge</b>${G.dailyMsg}</div>`:'';
+  const na=(G.newAch||[]).map(a=>`<div class="ach"><b>🏅 New: ${a.icon} ${a.name}</b>${a.desc}</div>`).join('');
+  modal(`<h3>${G.winner===0?'🏆 You win!':PNAME[G.winner]+' wins!'}</h3>${rows}${na}${dm}<div class="row"><button id="stats">📊 Game statistics</button></div><div class="row"><button id="again" class="ghost">Play again</button></div>`);
+  $('stats').onclick=()=>statsModal('overview',true);
+  $('again').onclick=()=>location.reload();
+}
+
+/* ---------- statistics screen ---------- */
+const WAYS=[0,0,1,2,3,4,5,6,5,4,3,2,1];
+const f1=x=>(Math.round(x*10)/10).toString();
+function statsModal(tab,end){
+  tab=tab||'overview';
+  const st=G.st,P=G.players,tot=sum(st.rolls);
+  const hdr=`<tr><th></th>${P.map(p=>`<th style="color:${PCOL[p.id]}">${PNAME[p.id]}</th>`).join('')}</tr>`;
+  const row=(label,fn,cls)=>`<tr class="${cls||''}"><td>${label}</td>${P.map(p=>`<td>${fn(p.id)}</td>`).join('')}</tr>`;
+  const head=label=>`<tr class="hd"><td colspan="${P.length+1}">${label}</td></tr>`;
+  const table=rows=>`<table class="st">${hdr}${rows}</table>`;
+  const legend=`<div class="small" style="margin:4px 0">${RES.map(r=>`<span class="lg" style="background:${HEXCOL[r]}">${EMO[r]}</span>`).join('')}</div>`;
+
+  function stacked(title,key){
+    const get=id=>{
+      const s=ST(id);
+      if(key!=='_lost')return s[key];
+      const o=emptyRes();RES.forEach(r=>{o[r]=s.lostSteal[r]+s.lostDiscard[r]+s.lostMono[r]+s.lostTrade[r];});return o;
+    };
+    const mx=Math.max(1,...P.map(p=>sum(get(p.id))));
+    return `<div class="sec">${title}</div>`+P.map(p=>{
+      const o=get(p.id),t=sum(o);
+      return `<div class="sbrow"><span style="color:${PCOL[p.id]}">${PNAME[p.id]}</span><div class="sbw"><div class="sb" style="width:${Math.max(1,100*t/mx*0.85)}%">${RES.filter(r=>o[r]).map(r=>`<span style="flex:${o[r]};background:${HEXCOL[r]}">${o[r]}</span>`).join('')}</div><b>${t}</b></div></div>`;
+    }).join('');
+  }
+  function diceChart(){
+    const W=340,Hh=190,bw=24,gap=6,l=8,base=Hh-26,top=20;
+    const exp=s=>tot*WAYS[s]/36;
+    let mx=1;for(let s=2;s<=12;s++)mx=Math.max(mx,st.rolls[s],exp(s));
+    let o=`<svg viewBox="0 0 ${W} ${Hh}" width="100%"><line x1="0" x2="${W}" y1="${base}" y2="${base}" stroke="#fff" stroke-opacity=".4"/>`;
+    for(let s=2;s<=12;s++){
+      const x=l+(s-2)*(bw+gap),h=(base-top)*st.rolls[s]/mx,ey=base-(base-top)*exp(s)/mx;
+      o+=`<rect x="${x}" y="${base-h}" width="${bw}" height="${h}" rx="3" fill="${s===7?'#ef5350':'#4fc3f7'}"/>`;
+      o+=`<text x="${x+bw/2}" y="${base-h-4}" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">${st.rolls[s]}</text>`;
+      o+=`<text x="${x+bw/2}" y="${base+14}" text-anchor="middle" font-size="12" fill="#cde">${s}</text>`;
+      o+=`<line x1="${x-2}" x2="${x+bw+2}" y1="${ey}" y2="${ey}" stroke="#ffd54f" stroke-width="2.5"/>`;
+    }
+    return o+'</svg>';
+  }
+  function vpChart(){
+    const m=st.vp.length;
+    if(m<2)return '<div class="small">Not enough data yet.</div>';
+    const W=340,Hh=170,l=24,r=8,t=8,b=22;
+    const WV=G.vpWin||10,yMax=Math.max(WV,...st.vp.map(v=>Math.max(...v)));
+    const X=i=>l+(W-l-r)*i/(m-1),Y=v=>t+(Hh-t-b)*(1-v/yMax);
+    let o=`<svg viewBox="0 0 ${W} ${Hh}" width="100%">`;
+    for(let v=0;v<=yMax;v+=2)o+=`<line x1="${l}" x2="${W-r}" y1="${Y(v)}" y2="${Y(v)}" stroke="#fff" stroke-opacity=".12"/><text x="${l-4}" y="${Y(v)+3}" text-anchor="end" font-size="9" fill="#9cc">${v}</text>`;
+    o+=`<line x1="${l}" x2="${W-r}" y1="${Y(WV)}" y2="${Y(WV)}" stroke="#ffd54f" stroke-dasharray="4 3" stroke-opacity=".8"/>`;
+    P.forEach(p=>{o+=`<polyline fill="none" stroke="${PCOL[p.id]}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" points="${st.vp.map((v,i)=>X(i).toFixed(1)+','+Y(v[p.id]).toFixed(1)).join(' ')}"/>`;});
+    return o+`<text x="${W/2}" y="${Hh-5}" text-anchor="middle" font-size="9" fill="#9cc">turns played →</text></svg>`;
+  }
+
+  let body='';
+  if(tab==='overview'){
+    const mins=Math.max(1,Math.round((Date.now()-st.start)/60000));
+    body=`<p class="small">${G.winner!==null?`Winner: <b style="color:${PCOL[G.winner]}">${PNAME[G.winner]}</b> · `:''}${tot} dice rolls (about ${Math.ceil(tot/G.n)} rounds) · ${mins} min</p>
+      <div class="sec">Victory points over time</div>${vpChart()}
+      ${table(
+        row('Victory points',i=>`<b>${totVP(P[i])}</b>`)+
+        row('Settlements / cities',i=>`${P[i].settles} / ${P[i].cities}`)+
+        row('Longest road reached',i=>ST(i).maxRoad)+
+        row('Knights played',i=>P[i].knights)+
+        row('Special cards',i=>(G.lr===i?'🛣️ ':'')+(G.la===i?'⚔️':'')||'–')+
+        row('Turns taken',i=>ST(i).turns)
+      )}`;
+  }else if(tab==='dice'){
+    let sevens=st.rolls[7],avg=tot?(st.rolls.reduce((a,c,s)=>a+c*s,0)/tot):0;
+    let common=0,cs=7;for(let s=2;s<=12;s++)if(st.rolls[s]>common){common=st.rolls[s];cs=s;}
+    body=`<div class="sec">Rolls of the dice (${tot} total)</div>${diceChart()}
+      <div class="small"><span style="color:#4fc3f7">■</span> rolled &nbsp;<span style="color:#ef5350">■</span> sevens (robber) &nbsp;<span style="color:#ffd54f">▬</span> expected with fair dice</div>
+      <p class="small">Average roll <b>${f1(avg)}</b> (expected 7.0) · Sevens <b>${sevens}</b> (expected ${f1(tot/6)}) · Most common: <b>${cs}</b> (${common}×)</p>
+      ${table(
+        row('Sevens rolled by player',i=>ST(i).rolled7)+
+        row('Dice production expected',i=>f1(ST(i).expected))+
+        row('Dice production received',i=>sum(ST(i).gainDice))+
+        row('Dice luck',i=>{const d=sum(ST(i).gainDice)-ST(i).expected;return `<span class="${d>=0?'good':'bad'}">${d>=0?'+':''}${f1(d)}</span>`;})+
+        row('Blocked by the robber',i=>sum(ST(i).blocked))+
+        row('Short-changed by an empty bank',i=>ST(i).short)
+      )}
+      <div class="small">Expected production is computed from each roll using your buildings at that time (cities count double).</div>`;
+  }else if(tab==='cards'){
+    body=legend+stacked('Cards received from dice','gainDice')+stacked('Cards spent on building and dev cards','spent')+stacked('Cards lost (robber, discards, Monopoly, trades)','_lost')+
+      table(
+        head('Gains')+
+        row('From dice',i=>sum(ST(i).gainDice))+
+        row('Stolen with the robber',i=>sum(ST(i).gainSteal))+
+        row('Trades (bank and players)',i=>sum(ST(i).gainTrade))+
+        row('Start, Year of Plenty, Monopoly',i=>sum(ST(i).gainOther))+
+        head('Spending and losses')+
+        row('Spent on building / dev cards',i=>sum(ST(i).spent))+
+        row('Given away in trades',i=>sum(ST(i).lostTrade))+
+        row('Stolen from you',i=>sum(ST(i).lostSteal))+
+        row('Discarded after a 7',i=>sum(ST(i).lostDiscard))+
+        row('Lost to Monopoly',i=>sum(ST(i).lostMono))+
+        head('Other')+
+        row('Bank trades',i=>ST(i).bankTrades)+
+        row('Player trades',i=>ST(i).playerTrades)+
+        row('Largest hand (at end of turns)',i=>ST(i).peak)
+      );
+  }else{
+    const D=['knight','vp','road','plenty','mono'];
+    body=table(
+      head('Built (including starting pieces)')+
+      row('Roads',i=>ST(i).built.road)+row('Settlements',i=>ST(i).built.settle)+row('Cities',i=>ST(i).built.city)+
+      head('Development cards bought')+
+      row('Total',i=>sum(ST(i).devBought))+
+      D.map(t=>row(DEVICON[t]+' '+DEVNAME[t],i=>ST(i).devBought[t],'sub')).join('')+
+      head('Development cards played')+
+      row('Total',i=>sum(ST(i).devPlayed))+
+      D.filter(t=>t!=='vp').map(t=>row(DEVICON[t]+' '+DEVNAME[t],i=>ST(i).devPlayed[t],'sub')).join('')+
+      head('Robber')+
+      row('Times moved',i=>ST(i).robberMoves)+row('Cards stolen',i=>ST(i).steals)+row('Times robbed',i=>ST(i).stolenFrom)
+    );
+  }
+  modal(`<div class="hdr"><h3>📊 Game statistics</h3></div>
+    <div class="seg">${[['overview','Overview'],['dice','🎲 Dice'],['cards','Cards'],['actions','Actions']].map(([k,l])=>`<button data-tab="${k}" class="${k===tab?'on':''}">${l}</button>`).join('')}</div>
+    ${body}
+    <div class="row"><button id="sclose" class="ghost">${end?'Back':'Close'}</button></div>`);
+  $('mbox').style.maxWidth='680px';
+  $('mbox').querySelectorAll('button[data-tab]').forEach(b=>b.onclick=()=>statsModal(b.dataset.tab,end));
+  $('sclose').onclick=()=>end?showWin():closeModal();
+}
+
+/* ---------- start screen & settings ---------- */
+const MAPDESC={sea:'Islands: several islands in open sea. Build ships 🌲🐑 to reach new islands; the first settlement on each new island gives +1 VP.',std:'Standard: a random 19-tile island for 2–4 players.',fixed:'Beginner: the same balanced 19-tile island every game. Good for learning.',large:'Large: 30 tiles and 11 ports for 4–6 players. The bank holds 24 of each card and there are 34 development cards.'};
+const mapSeg=(cur,dis)=>seg('map',[['std','Standard'],['fixed','Beginner'],['sea','Islands'],['large','Large']],cur,dis);
+const botsSeg=(cur,dis)=>seg('bots',S.map==='large'?[[3,'3 bots'],[4,'4 bots'],[5,'5 bots']]:[[1,'1 bot'],[2,'2 bots'],[3,'3 bots']],cur,dis);
+const mapFix=pm=>{if(S.map==='large'&&pm!=='large')S.bots=Math.max(S.bots,4);if(S.map!=='large'&&S.bots>3)S.bots=3;if(S.map==='large'&&S.bots<3)S.bots=3;saveS();};
+function seg(key,opts,cur,dis){return `<div class="seg">${opts.map(([v,l])=>`<button data-seg="${key}" data-val="${v}" class="${String(cur)===String(v)?'on':''}" ${dis?'disabled':''}>${l}</button>`).join('')}</div>`;}
+function bindSeg(rerender){
+  $('mbox').querySelectorAll('button[data-seg]').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.seg,v=b.dataset.val;S[k]=isNaN(+v)?v:+v;saveS();rerender();
+  });
+}
+function startModal(){
+  const sv=readSave();
+  let resume='';
+  if(sv){
+    const g=sv.G,p0=g.players[0],vp=p0.settles+2*p0.cities+(g.lr===0?2:0)+(g.la===0?2:0)+p0.dev.vp+p0.devNew.vp;
+    const mins=Math.max(0,Math.round((Date.now()-sv.t)/60000));
+    const ago=mins<1?'just now':mins<60?mins+' min ago':Math.round(mins/60)+' h ago';
+    resume=`<div class="row"><button id="resume">▶ Continue saved game</button></div>
+      <div class="small" style="text-align:center">${g.n-1} bot${g.n>2?'s':''} · ${g.diff} · you have ${vp} VP · saved ${ago} · <a id="delsave" style="text-decoration:underline;cursor:pointer">delete</a></div><hr style="opacity:.25">`;
+  }
+  modal(`<h3>⬡ Hexfarers <small style="font-weight:400;opacity:.7">v${VERSION}</small></h3>${resume}<div class="small">Settle the island: collect resources, trade, build roads, settlements and cities. First to ${S.rules.vp} victory points wins. Plays fully offline and saves automatically.</div>
+    <div class="sec">Your colour</div><div class="seg" id="cols">${palette().map(([n,c],i)=>`<button data-col="${i}" title="${n}" aria-label="${n}" style="background:${c};border:3px solid ${S.color===i?'#fff':'transparent'};padding:14px 0;${S.color===i?'box-shadow:0 0 0 2px #2e9e5b':''}"></button>`).join('')}</div>
+    <div class="sec">Map</div>${mapSeg(S.map)}
+    <div class="small">${MAPDESC[S.map]||''}</div>
+    <div class="sec">Opponents</div>${botsSeg(S.bots)}
+    <div class="sec">Bot difficulty</div>${seg('diff',[['easy','Easy'],['normal','Normal'],['hard','Hard'],['expert','Expert']],S.diff)}
+    <div class="small">${DIFFDESC[S.diff]}</div>
+    <div class="row"><button id="go">${sv?'Start a new game':'Start game'}</button></div>
+    <div class="row"><button id="daily" class="ghost">📅 Daily challenge</button><button id="rules" class="ghost">⚖️ Game rules${rulesLabel()}</button></div>
+    <div class="row"><button id="st" class="ghost">⚙ Settings</button><button id="car" class="ghost">🏅 Career</button></div>
+    ${isStandalone()?'':'<div class="row"><button id="inst" class="ghost">📲 Install on my phone</button></div>'}`);
+  {const pm=S.map;bindSeg(()=>{mapFix(pm);startModal();});}
+  $('mbox').querySelectorAll('button[data-col]').forEach(b=>b.onclick=()=>{S.color=+b.dataset.col;saveS();startModal();});
+  if(sv){
+    $('resume').onclick=()=>{if(!loadGame())startModal();};
+    $('delsave').onclick=()=>{clearSave();startModal();};
+  }
+  $('go').onclick=()=>newGame(S.bots,false,S.diff);
+  $('st').onclick=()=>settingsModal(false);
+  $('car').onclick=()=>careerModal(startModal);
+  $('daily').onclick=()=>dailyModal(startModal);
+  if($('inst'))$('inst').onclick=()=>installModal(startModal);
+  $('rules').onclick=()=>rulesModal(startModal);
+}
+function settingsModal(inGame){
+  const tog=(k,l)=>`<label class="tog"><input type="checkbox" data-t="${k}" ${S[k]?'checked':''}>${l}</label>`;
+  modal(`<div class="hdr"><h3>⚙ Settings</h3><span class="small">Hexfarers v${VERSION}</span></div>
+    <div class="sec">Map ${inGame?'<span class="small">(applies to next game)</span>':''}</div>${mapSeg(S.map,inGame)}
+    <div class="sec">Opponents ${inGame?'<span class="small">(applies to next game)</span>':''}</div>${botsSeg(S.bots,inGame)}
+    <div class="sec">Bot difficulty ${inGame?`<span class="small">(this game: ${G.diff}; change applies next game)</span>`:''}</div>${seg('diff',[['easy','Easy'],['normal','Normal'],['hard','Hard'],['expert','Expert']],S.diff,inGame)}
+    <div class="small">${DIFFDESC[S.diff]}</div>
+    <div class="sec">Bot action delay: <b id="v1"></b></div><input type="range" id="r1" min=".5" max="3" step=".25" value="${S.delay}">
+    <div class="sec">Pause at the start of each bot turn: <b id="v2"></b></div><input type="range" id="r2" min="0" max="4" step=".5" value="${S.turnPause}">
+    ${tog('step','Wait for my tap after each bot turn')}
+    ${tog('anim','Animations (dice roll, flying cards)')}
+    ${tog('hl','Highlight tiles matching the dice roll')}
+    ${tog('reveal','Reveal cards stolen between bots')}
+    ${tog('confirmEnd','Ask before ending my turn if I can still build')}
+    ${tog('confirmPick','Confirm setup and robber placements')}
+    ${tog('offers','Bots may propose trades to me')}
+    ${tog('personas','Bot personalities (applies to next game)')}
+    ${tog('sound','Sound effects')}
+    ${tog('haptics','Vibration')}
+    ${tog('cb','Colour-blind mode (safe colours, shapes, tile patterns)')}
+    ${tog('chat','Bot chat and emotes')}
+    <div class="sec">Theme</div>${seg('theme',[['ocean','Ocean'],['night','Night'],['parchment','Parchment'],['meadow','Meadow']],S.theme)}
+    <div class="sec">Layout</div>${seg('layout',[['auto','Auto'],['stack','Portrait'],['side','Side panel']],S.layout)}
+    ${isStandalone()?'':'<div class="row"><button id="inst2" class="ghost">📲 Install on my phone</button></div>'}
+    <div class="row"><button id="rl2" class="ghost">⚖️ Game rules (next game)</button></div>
+    <div class="row"><button id="car2" class="ghost">🏅 Career &amp; achievements</button></div>
+    <div class="row"><button id="cl" class="ghost">📜 Changelog (v${VERSION})</button></div>
+    <div class="row"><button id="done">${inGame?'Close':'Done'}</button></div>
+    ${inGame?'<div class="row"><button id="ng" class="ghost">Quit to menu (progress is saved)</button></div>':''}`);
+  const lab=()=>{$('v1').textContent=(0.65*S.delay).toFixed(1)+'s';$('v2').textContent=S.turnPause.toFixed(1)+'s';};
+  lab();
+  $('r1').oninput=e=>{S.delay=+e.target.value;saveS();lab();};
+  $('r2').oninput=e=>{S.turnPause=+e.target.value;saveS();lab();};
+  $('mbox').querySelectorAll('input[data-t]').forEach(c=>c.onchange=()=>{S[c.dataset.t]=c.checked;saveS();if(c.dataset.t==='cb'){applyColors(S.color);if(G)render();}if(c.dataset.t==='sound'&&c.checked)sfx('trade');});
+  {const pm=S.map;bindSeg(()=>{mapFix(pm);applyLayout();applyTheme();settingsModal(inGame);if(G)render();});}
+  if($('inst2'))$('inst2').onclick=()=>installModal(()=>settingsModal(inGame));
+  $('rl2').onclick=()=>rulesModal(()=>settingsModal(inGame));
+  $('car2').onclick=()=>careerModal(()=>settingsModal(inGame));
+  $('cl').onclick=()=>changelogModal(inGame);
+  $('done').onclick=()=>inGame?closeModal():startModal();
+  if(inGame)$('ng').onclick=function(){if(this.dataset.c)location.reload();else{this.dataset.c=1;this.textContent='Tap again to quit this game';}};
+}
+
+/* ---------- rendering ---------- */
+function renderBank(){
+  $('bank').innerHTML='🏦 '+RES.map(r=>`<span class="${G.bank[r]<=3?'low':''}">${EMO[r]}${G.bank[r]}</span>`).join(' ')+` · 🃏${G.deck.length}`;
+}
+function render(){if(!G)return;renderTop();renderBoard();renderPanel();renderBank();scheduleSave();}
+function renderTop(){
+  $('top').classList.toggle('many',G.n>4);
+  $('top').innerHTML=G.players.map(p=>{
+    const fl=G.flash&&G.flash[p.id];
+    const sy=p.ai&&p.style&&S.personas?STYLES[p.style][0]:'';
+    return `<div class="pl ${p.id===G.cur&&!G.over?'cur':''}" data-p="${p.id}" style="border-color:${PCOL[p.id]}"><b style="color:${PCOL[p.id]}">${S.cb?SYM[p.id]+' ':''}${PNAME[p.id]}</b>${sy} ${p.id===0?totVP(p):pubVP(p)}VP${G.lr===p.id?' 🛣️':''}${G.la===p.id?' ⚔️':''}<br>${fl?`<span class="fl">${fl}</span>`:`🃏${cards(p)} 🗡${p.knights} 🛤${G.lens[p.id]}`}</div>`;
+  }).join('')+'<div></div>'.repeat(Math.max(0,4-G.n));
+}
+function shade(hex,f){const n=parseInt(hex.slice(1),16);const r=Math.round((n>>16)*f),g=Math.round(((n>>8)&255)*f),b=Math.round((n&255)*f);return `rgb(${r},${g},${b})`;}
+function houseSVG(x,y,c,sy){
+  return `<g transform="translate(${x},${y})" stroke="#111" stroke-width="1.6" stroke-linejoin="round">
+    <path d="M-8 8V-1H8V8Z" fill="${c}"/><path d="M-10 -1L0 -11L10 -1Z" fill="${shade(c,.72)}"/>
+    <rect x="-2" y="2" width="4" height="6" fill="#3b2a1a" stroke="none"/>${sy?`<text x="0" y="-2.4" text-anchor="middle" font-size="7.5" font-weight="800" fill="#fff" stroke="#111" stroke-width=".5" paint-order="stroke">${sy}</text>`:''}</g>`;
+}
+function citySVG(x,y,c,sy){
+  const dk=shade(c,.7);
+  return `<g transform="translate(${x},${y})" stroke="#111" stroke-width="1.5" stroke-linejoin="round">
+    <path d="M-3 9V0H14V9Z" fill="${c}"/><path d="M-4.5 0L5.5 -8L15.5 0Z" fill="${dk}"/>
+    <path d="M-15 9V-6H-3V9Z" fill="${c}"/><path d="M-16.5 -6L-9 -15L-1.5 -6Z" fill="${dk}"/>
+    <path d="M-9 -15V-21" stroke-width="1.3"/><path d="M-9 -21L-2 -19L-9 -17Z" fill="#ffd54f" stroke-width="1"/>
+    <path d="M-12 9V4Q-9 0 -6 4V9Z" fill="#3b2a1a" stroke="none"/>
+    <rect x="-12.5" y="-3.5" width="3" height="3" fill="#fff3b0" stroke="none"/><rect x="-7" y="-3.5" width="3" height="3" fill="#fff3b0" stroke="none"/>
+    <rect x="2" y="3" width="3.5" height="3.5" fill="#fff3b0" stroke="none"/><rect x="8" y="3" width="3.5" height="3.5" fill="#fff3b0" stroke="none"/>
+    ${sy?`<text x="-9" y="-7.6" text-anchor="middle" font-size="7" font-weight="800" fill="#fff" stroke="#111" stroke-width=".5" paint-order="stroke">${sy}</text>`:''}
+  </g>`;
+}
+function renderBoard(){
+  const hexPts=h=>h.verts.map(v=>V[v].x+','+V[v].y).join(' ');
+  let s='<defs><marker id="ah" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="3.2" markerHeight="3.2" orient="auto"><path d="M0 0L10 5L0 10z" fill="#ff1744"/></marker>'+(S.cb?CBDEFS:'')+'</defs>';
+  for(const pt of PORTS){
+    const A=V[pt.a],B=V[pt.b];
+    s+=`<line x1="${A.x}" y1="${A.y}" x2="${pt.px}" y2="${pt.py}" stroke="#d9c79a" stroke-width="2"/><line x1="${B.x}" y1="${B.y}" x2="${pt.px}" y2="${pt.py}" stroke="#d9c79a" stroke-width="2"/>`;
+    s+=`<circle cx="${pt.px}" cy="${pt.py}" r="17" fill="#fff4d6" stroke="#8a6d3b" stroke-width="2"/>`;
+    if(pt.type==='any')s+=`<text x="${pt.px}" y="${pt.py+4}" text-anchor="middle" font-size="11" font-weight="700" fill="#333">3:1</text>`;
+    else s+=`<text x="${pt.px}" y="${pt.py-1}" text-anchor="middle" font-size="12">${EMO[pt.type]}</text><text x="${pt.px}" y="${pt.py+11}" text-anchor="middle" font-size="9" font-weight="700" fill="#333">2:1</text>`;
+  }
+  H.forEach((h,i)=>{
+    s+=`<polygon data-hx="${i}" points="${hexPts(h)}" fill="${HEXCOL[h.res]}" stroke="${h.res==='sea'?'rgba(255,255,255,.14)':'#f3e9c6'}" stroke-width="2.5"/>`;
+    if(S.cb&&h.res!=='desert'&&h.res!=='sea')s+=`<polygon points="${hexPts(h)}" fill="url(#cb-${h.res})" pointer-events="none"/>`;
+    if(h.res==='sea')s+=`<text x="${h.cx}" y="${h.cy+7}" text-anchor="middle" font-size="20" opacity=".16" pointer-events="none">🌊</text>`;
+    else if(h.res!=='desert')s+=`<text x="${h.cx}" y="${h.cy-12}" text-anchor="middle" font-size="19">${EMO[h.res]}</text>`;
+    else s+=`<text x="${h.cx}" y="${h.cy+6}" text-anchor="middle" font-size="22">🏜️</text>`;
+  });
+  // rolled-number highlight
+  if(G.hl!==null&&!G.mode)H.forEach((h,i)=>{
+    if(h.num!==G.hl)return;
+    const blocked=i===G.robber;
+    s+=blocked
+      ?`<polygon points="${hexPts(h)}" fill="rgba(255,23,68,.25)" stroke="#ff1744" stroke-width="4" stroke-dasharray="6 5" pointer-events="none"/>`
+      :`<polygon class="glow" points="${hexPts(h)}" fill="rgba(255,238,88,.38)" stroke="#fff176" stroke-width="5" pointer-events="none"/>`;
+  });
+  // number tokens
+  H.forEach((h,i)=>{
+    if(!h.num)return;
+    const red=h.num===6||h.num===8,on=G.hl===h.num&&!G.mode;
+    s+=`<circle cx="${h.cx}" cy="${h.cy+10}" r="${on?15:12}" fill="${on?'#ffee58':'#fbf3d9'}" stroke="${on?'#f57f17':'#8a6d3b'}" stroke-width="${on?2.5:1}"/><text x="${h.cx}" y="${h.cy+(on?16:15)}" text-anchor="middle" font-size="${on?16:13}" font-weight="800" fill="${red?'#c62828':'#222'}">${h.num}</text>`;
+  });
+  // roads
+  for(const e of E)if(e.owner!==-1){
+    const A=V[e.a],B=V[e.b];
+    if(e.kind==='ship'){
+      const mx=(A.x+B.x)/2,my=(A.y+B.y)/2;let ang=Math.atan2(B.y-A.y,B.x-A.x)*180/Math.PI;if(ang>90)ang-=180;if(ang<-90)ang+=180;
+      s+=`<line x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" stroke="${PCOL[e.owner]}" stroke-width="3" stroke-dasharray="3 4" stroke-linecap="round" opacity=".85"/>`;
+      s+=`<g transform="translate(${mx},${my}) rotate(${ang}) scale(1.3)"><path d="M-13 0L-9 7H9L13 0Z" fill="${PCOL[e.owner]}" stroke="#111" stroke-width="1.6" stroke-linejoin="round"/><path d="M0 -1V-13L8 -3Z" fill="#fff" stroke="#111" stroke-width="1.2" stroke-linejoin="round"/>${S.cb?`<text x="0" y="5.6" text-anchor="middle" font-size="6" font-weight="800" fill="#fff" stroke="#111" stroke-width=".4" paint-order="stroke">${SYM[e.owner]}</text>`:''}</g>`;
+      continue;
+    }
+    s+=`<line x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" stroke="#222" stroke-width="10" stroke-linecap="round"/><line x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" stroke="${PCOL[e.owner]}" stroke-width="6" stroke-linecap="round"/>`;
+    if(S.cb){const mx=(A.x+B.x)/2,my=(A.y+B.y)/2;s+=`<circle cx="${mx}" cy="${my}" r="5.5" fill="#fff" stroke="#111" stroke-width="1"/><text x="${mx}" y="${my+3}" text-anchor="middle" font-size="8" font-weight="800" fill="#111">${SYM[e.owner]}</text>`;}
+  }
+  // buildings (+ ring if next to a rolled tile)
+  for(const v of V)if(v.owner!==-1){
+    if(G.hl!==null&&!G.mode&&v.hexes.some(hi=>H[hi].num===G.hl&&hi!==G.robber))s+=`<circle class="glow" cx="${v.x}" cy="${v.y}" r="${v.city?24:17}" fill="none" stroke="#ffee58" stroke-width="3.5" pointer-events="none"/>`;
+    s+=v.city?citySVG(v.x,v.y,PCOL[v.owner],S.cb?SYM[v.owner]:''):houseSVG(v.x,v.y,PCOL[v.owner],S.cb?SYM[v.owner]:'');
+  }
+  // robber: ring on the new tile, arrow from the old one, token
+  if(G.rb){
+    const A=H[G.rb.from],B=H[G.rb.to];
+    const dx=B.cx-A.cx,dy=B.cy-A.cy,L=Math.hypot(dx,dy)||1,ux=dx/L,uy=dy/L;
+    const x1=A.cx+ux*18,y1=A.cy+uy*18,x2=B.cx-ux*26,y2=B.cy-uy*26;
+    s+=`<circle class="glow" cx="${B.cx}" cy="${B.cy}" r="31" fill="rgba(255,23,68,.15)" stroke="#ff1744" stroke-width="4" pointer-events="none"/>`;
+    s+=`<circle cx="${A.cx}" cy="${A.cy}" r="6" fill="#ff1744" stroke="#fff" stroke-width="1.5" pointer-events="none"/>`;
+    s+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#000" stroke-width="9" stroke-linecap="round" opacity=".55" pointer-events="none"/>`;
+    s+=`<line class="flow" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#ff1744" stroke-width="5" stroke-linecap="round" marker-end="url(#ah)" pointer-events="none"/>`;
+  }
+  {
+    const h=H[G.robber];
+    s+=`<g transform="translate(${h.cx+25},${h.cy+6})" stroke="#fff" stroke-width="1.6"><path d="M-8 11Q-8 -2 0 -2Q8 -2 8 11Z" fill="#1b1b1b"/><circle cy="-8" r="6.5" fill="#1b1b1b"/></g>`;
+  }
+  const t=targets();
+  if(t&&G.mode&&G.mode!=='robber'){
+    const okE=new Set(t.e||[]),okV=new Set(t.v||[]);
+    if(t.e){for(const e of E){if(okE.has(e.id))continue;const A=V[e.a],B=V[e.b];s+=`<line data-why="e${e.id}" x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" stroke="rgba(0,0,0,0)" stroke-width="16" stroke-linecap="round"/>`;}}
+    else{for(const v of V){if(okV.has(v.id))continue;s+=`<circle data-why="v${v.id}" cx="${v.x}" cy="${v.y}" r="14" fill="rgba(0,0,0,0)"/>`;}}
+  }
+  if(t){
+    const sel=(k,i)=>G.sel&&G.sel.kind===k&&G.sel.id===i;
+    (t.h||[]).forEach(i=>{const h=H[i],sl=sel('h',i);s+=`<polygon class="${sl?'':'hit'}" data-h="${i}" points="${hexPts(h)}" fill="${sl?'rgba(0,230,118,.55)':'rgba(255,255,255,.35)'}" stroke="${sl?'#00e676':'#fff'}" stroke-width="${sl?5:3}"/>`;});
+    (t.e||[]).forEach(i=>{const e=E[i],A=V[e.a],B=V[e.b],sl=sel('e',i);s+=`<line x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" stroke="#000" stroke-width="19" stroke-linecap="round" opacity=".5" pointer-events="none"/><line class="${sl?'':'hit'}" data-e="${i}" x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" stroke="${sl?'#00e676':'#fff'}" stroke-width="${sl?15:12}" stroke-linecap="round" opacity="${sl?1:.95}"/>`;});
+    (t.v||[]).forEach(i=>{const v=V[i],sl=sel('v',i);s+=`<circle cx="${v.x}" cy="${v.y}" r="21" fill="#000" opacity=".4" pointer-events="none"/><circle class="${sl?'':'hit'}" data-v="${i}" cx="${v.x}" cy="${v.y}" r="${sl?19:15}" fill="${sl?'#00e676':'rgba(255,255,255,.92)'}" stroke="${sl?'#fff':'#0b3d5c'}" stroke-width="3"/>`;});
+  }
+  $('board').innerHTML=s;
+}
+function dieSVG(n,size){
+  const P={1:[[5,5]],2:[[2.6,2.6],[7.4,7.4]],3:[[2.6,2.6],[5,5],[7.4,7.4]],4:[[2.6,2.6],[7.4,2.6],[2.6,7.4],[7.4,7.4]],5:[[2.6,2.6],[7.4,2.6],[5,5],[2.6,7.4],[7.4,7.4]],6:[[2.6,2.4],[7.4,2.4],[2.6,5],[7.4,5],[2.6,7.6],[7.4,7.6]]};
+  return `<svg class="die" width="${size}" height="${size}" viewBox="0 0 10 10"><rect x=".4" y=".4" width="9.2" height="9.2" rx="1.9" fill="#fff" stroke="#333" stroke-width=".5"/>${P[n].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="${n===1?1.2:.85}" fill="${n===1?'#d32f2f':'#222'}"/>`).join('')}</svg>`;
+}
+function renderPanel(){
+  const me=G.players[0];
+  let msg;
+  if(G.over)msg=`${PNAME[G.winner]} won!`;
+  else if(G.waiting)msg=G.waitMsg;
+  else if(G.mode&&G.sel)msg='Confirm this spot?';
+  else if(G.mode)msg={settle:'Tap a glowing spot for your settlement',settleSetup:'Place your starting settlement',city:'Tap a settlement to upgrade',road:'Tap a glowing spot for the road',roadSetup:'Place your starting road',ship:'Tap a glowing spot for the ship',robber:'Move the robber: tap a hex'}[G.mode];
+  else if(G.phase==='setup')msg=`${PNAME[G.cur]} is placing…`;
+  else if(G.cur===0&&!G.auto)msg=G.phase==='roll'?'Your turn: roll the dice':'Your turn';
+  else msg=`${PNAME[G.cur]} is playing…`;
+  $('msg').textContent=msg;
+  $('dice').innerHTML=G.dice?`<span class="dd ${G.rolling?'tumble':''}">${dieSVG(G.dice[0],42)}${dieSVG(G.dice[1],42)}</span><span class="tot">${G.rolling?'':G.dice[0]+G.dice[1]}</span>`:'';
+  const shown=G.shown||me.res,devTot=sum(me.dev)+sum(me.devNew),devNew=sum(me.devNew);
+  $('hand').innerHTML=RES.map(r=>`<div class="chip" data-r="${r}">${EMO[r]}<b>${shown[r]}</b></div>`).join('')+`<div class="chip" data-r="dev" data-open="1">🃏<b>${devTot}</b>${devNew?`<i class="lock">🔒${devNew}</i>`:''}</div>`;
+  if(G.waiting){
+    $('btns').innerHTML='<button data-a="cont" style="grid-column:1/-1;padding:12px">Continue ▶</button>';
+  }else if(G.mode&&G.sel){
+    $('btns').innerHTML='<button data-a="confirm" style="grid-column:span 2;padding:12px">Confirm ✓</button><button data-a="change" class="ghost" style="grid-column:span 2;padding:12px">Change</button>';
+  }else if(G.mode){
+    const cancelable=!G.noCancel&&['settle','city','road','ship'].includes(G.mode);
+    $('btns').innerHTML=cancelable?'<button data-a="cancel" class="ghost" style="grid-column:1/-1">Cancel</button>':'';
+  }else{
+    const act=canAct(),rollOK=!G.over&&G.cur===0&&!G.auto&&!G.busy&&G.phase==='roll';
+    const B=[
+      (G.phase==='roll'||G.cur!==0)?['roll','🎲 Roll','',rollOK]:['undo','↶ Undo',G.undo.length?({road:'road',settle:'settlement',city:'city',ship:'ship'})[G.undo[G.undo.length-1].kind]:'',act&&G.undo.length>0],
+      ['road','Road','🌲🧱',act&&can(me,COST.road)&&me.roads<15],
+      ['settle','Settlement','🌲🧱🐑🌾',act&&can(me,COST.settle)&&me.settles<5],
+      ['city','City','🌾🌾⛰️⛰️⛰️',act&&can(me,COST.city)&&me.cities<4&&me.settles>0],
+      ...(G.map==='sea'?[['ship','Ship','🌲🐑',act&&can(me,COST.ship)&&(me.ships||0)<15]]:[]),
+      ['buy','Buy card','🐑🌾⛰️',act&&can(me,COST.dev)&&G.deck.length>0],
+      ['cards','My cards ℹ','',G.phase!=='setup'&&!G.over],
+      ['trade','Trade','',act],
+      ['end','End turn','',act]
+    ];
+    $('btns').innerHTML=B.map(([a,l,sub,ok])=>`<button data-a="${a}" ${ok?'':'disabled'}>${l}${sub?`<small>${sub}</small>`:''}</button>`).join('');
+  }
+  $('log').innerHTML=G.log.slice(-8).reverse().map(x=>`<div>${colorize(logText(x))}</div>`).join('');
+}
+
+/* ---------- input ---------- */
+$('board').addEventListener('click',e=>{
+  const wn=e.target.closest('[data-why]');
+  if(wn&&G&&G.resolve){const m=whyNot(G.mode,wn.dataset.why);if(m)toast(`<div>🚫 ${m}</div>`,2800);return;}
+  const t=e.target.closest('[data-v],[data-e],[data-h]');
+  if(!t||!G||!G.resolve)return;
+  const d=t.dataset;
+  const kind=d.v!==undefined?'v':d.e!==undefined?'e':'h',id=+(d.v!==undefined?d.v:d.e!==undefined?d.e:d.h);
+  if(S.confirmPick&&['settleSetup','roadSetup','robber'].includes(G.mode)){G.sel={kind,id};render();return;}
+  finishPick(id);
+});
+$('hand').addEventListener('click',e=>{if(G&&G.phase!=='setup'&&!G.over&&e.target.closest('[data-open]'))devModal();});
+$('btns').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-a]');
+  if(!b||b.disabled||!G)return;
+  const a=b.dataset.a;
+  if(a==='cont'){const r=G.waiting;G.waiting=null;if(r)r();render();return;}
+  if(a==='cancel'){if(G.resolve&&!G.noCancel&&['settle','city','road','ship'].includes(G.mode))finishPick(null);return;}
+  if(a==='confirm'){if(G.sel&&G.resolve)finishPick(G.sel.id);return;}
+  if(a==='change'){G.sel=null;render();return;}
+  if(a==='undo'){undoBuild();return;}
+  if(a==='roll')humanRoll();
+  else if(a==='road'||a==='settle'||a==='city'||a==='ship')humanBuild(a);
+  else if(a==='buy')humanBuy();
+  else if(a==='cards')devModal();
+  else if(a==='trade')tradeModal();
+  else if(a==='end')tryEndTurn();
+});
+$('gear').addEventListener('click',()=>settingsModal(!!G));
+$('statbtn').addEventListener('click',()=>{if(G&&G.st)statsModal('overview',false);});
+const modalFree=()=>$('modal').classList.contains('hidden');
+$('logbtn').addEventListener('click',()=>{if(G&&modalFree())logModal();});
+$('log').addEventListener('click',()=>{if(G&&modalFree())logModal();});
+$('top').addEventListener('click',e=>{const b=e.target.closest('.pl[data-p]');if(G&&b&&+b.dataset.p>0&&modalFree())botModal(+b.dataset.p);});
+/* ---------- zoom & pan ---------- */
+const VIEW={B:null,cx:0,cy:0,z:1};
+function fitBoard(){
+  let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
+  for(const v of V){x0=Math.min(x0,v.x);x1=Math.max(x1,v.x);y0=Math.min(y0,v.y);y1=Math.max(y1,v.y);}
+  const m=52;
+  VIEW.B={x:x0-m,y:y0-m,w:x1-x0+2*m,h:y1-y0+2*m};
+  VIEW.cx=VIEW.B.x+VIEW.B.w/2;VIEW.cy=VIEW.B.y+VIEW.B.h/2;VIEW.z=1;applyView();
+}
+function applyView(){
+  const B=VIEW.B;if(!B)return;
+  const w=B.w/VIEW.z,h=B.h/VIEW.z;
+  VIEW.cx=Math.min(Math.max(VIEW.cx,B.x+w/2),B.x+B.w-w/2);
+  VIEW.cy=Math.min(Math.max(VIEW.cy,B.y+h/2),B.y+B.h-h/2);
+  $('board').setAttribute('viewBox',`${VIEW.cx-w/2} ${VIEW.cy-h/2} ${w} ${h}`);
+  $('zfit').style.opacity=VIEW.z>1.02?1:.45;
+}
+function toSvg(x,y){
+  const m=$('board').getScreenCTM&&$('board').getScreenCTM();if(!m)return null;
+  const i=m.inverse();return {x:i.a*x+i.c*y+i.e,y:i.b*x+i.d*y+i.f};
+}
+function zoomAt(px,py,nz){
+  nz=Math.min(4,Math.max(1,nz));
+  const P=toSvg(px,py);
+  VIEW.z=nz;applyView();
+  const Q=toSvg(px,py);
+  if(P&&Q){VIEW.cx+=P.x-Q.x;VIEW.cy+=P.y-Q.y;applyView();}
+}
+function panPx(dx,dy){
+  const m=$('board').getScreenCTM&&$('board').getScreenCTM();if(!m)return;
+  VIEW.cx-=dx/m.a;VIEW.cy-=dy/m.d;applyView();
+}
+{
+  const bd=$('board'),ptrs=new Map();let moved=false,last=null;
+  const pinch=()=>{const a=[...ptrs.values()];if(a.length<2)return null;return {mx:(a[0].x+a[1].x)/2,my:(a[0].y+a[1].y)/2,d:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)||1};};
+  bd.addEventListener('pointerdown',e=>{
+    if(ptrs.size===0)moved=false;
+    ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY});
+    last=pinch();
+  });
+  bd.addEventListener('pointermove',e=>{
+    const p=ptrs.get(e.pointerId);if(!p)return;
+    const dx=e.clientX-p.x,dy=e.clientY-p.y;
+    p.x=e.clientX;p.y=e.clientY;
+    if(ptrs.size>=2){
+      const s=pinch();moved=true;
+      if(last){panPx(s.mx-last.mx,s.my-last.my);zoomAt(s.mx,s.my,VIEW.z*s.d/last.d);}
+      last=s;
+    }else if(VIEW.z>1.02){
+      if(Math.hypot(p.x-p.sx,p.y-p.sy)>6)moved=true;
+      if(moved)panPx(dx,dy);
+    }
+  });
+  const up=e=>{ptrs.delete(e.pointerId);last=pinch();};
+  bd.addEventListener('pointerup',up);bd.addEventListener('pointercancel',up);bd.addEventListener('pointerleave',up);
+  bd.addEventListener('click',e=>{if(moved){e.stopPropagation();e.preventDefault();moved=false;}},true);
+  bd.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.clientX,e.clientY,VIEW.z*(e.deltaY<0?1.15:1/1.15));},{passive:false});
+  const mid=()=>{const r=bd.getBoundingClientRect();return [r.left+r.width/2,r.top+r.height/2];};
+  $('zin').onclick=()=>{const [x,y]=mid();zoomAt(x,y,VIEW.z*1.3);};
+  $('zout').onclick=()=>{const [x,y]=mid();zoomAt(x,y,VIEW.z/1.3);};
+  $('zfit').onclick=()=>{VIEW.z=1;VIEW.cx=VIEW.B?VIEW.B.x+VIEW.B.w/2:0;VIEW.cy=VIEW.B?VIEW.B.y+VIEW.B.h/2:0;applyView();};
+}
+
+/* ---------- save & resume ---------- */
+const SAVEKEY='hexfarers.save';
+let saveTimer=null;
+function snapshot(){
+  const g={...G,resolve:null,waiting:null,shown:null,flash:null,mode:null,sel:null,rolling:false,busy:false};
+  g.st={...G.st,elapsed:Date.now()-G.st.start};
+  return JSON.stringify({v:1,ver:VERSION,t:Date.now(),G:g,V,E,H,PORTS,pcol:PCOL.slice()});
+}
+function saveNow(){try{if(!G||G.auto||G.over)return;localStorage.setItem(SAVEKEY,snapshot());}catch(e){}}
+function clearSave(){try{localStorage.removeItem(SAVEKEY);}catch(e){}}
+function readSave(){
+  try{
+    const t=localStorage.getItem(SAVEKEY);if(!t)return null;
+    const o=JSON.parse(t);
+    return(o&&o.v===1&&o.G&&o.V&&o.E&&o.H&&o.G.players)?o:null;
+  }catch(e){return null;}
+}
+const humanIdle=()=>!!G&&!G.auto&&!G.over&&G.cur===0&&!G.busy&&!G.mode&&!G.resolve&&!G.waiting&&(G.phase==='roll'||G.phase==='main');
+function scheduleSave(){if(!G||G.auto)return;clearTimeout(saveTimer);saveTimer=setTimeout(()=>{if(humanIdle())saveNow();},350);}
+function loadGame(){
+  const o=readSave();if(!o)return false;
+  V=o.V;E=o.E;H=o.H;PORTS=o.PORTS;G=o.G;applyColors(S.color,S.cb?null:o.pcol);
+  G.st.start=Date.now()-(G.st.elapsed||0);
+  G.resolve=null;G.waiting=null;G.mode=null;G.sel=null;G.busy=false;G.shown=null;G.flash=null;G.rolling=false;
+  fitBoard();closeModal();render();
+  if(G.phase==='setup')mainFlow();
+  else if(G.cur===0)toast('<b>Game resumed</b>',1000,false);
+  else turnLoop();
+  return true;
+}
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&humanIdle())saveNow();});
+window.addEventListener('pagehide',()=>{if(humanIdle())saveNow();});
+
+/* ---------- layout ---------- */
+function applyLayout(){
+  const w=window.innerWidth,h=window.innerHeight;
+  const side=S.layout==='side'||(S.layout==='auto'&&w/h>=1.3&&h<=620);
+  document.body.classList.toggle('side',side);
+}
+window.addEventListener('resize',applyLayout);
+window.addEventListener('orientationchange',applyLayout);
+applyLayout();
+
+document.title='Hexfarers v'+VERSION;
+if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){try{navigator.serviceWorker.register('sw.js').catch(()=>{});}catch(e){}}
+window.VERSION=VERSION;window.recordGame=recordGame;window.readCareer=readCareer;window.ACH=ACH;window.newGame=newGame;window.getG=()=>G;window.getS=()=>S;window.loadGame=loadGame;
+applyTheme();
+startModal();
+</script>
+</body>
+</html>
