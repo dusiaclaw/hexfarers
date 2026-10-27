@@ -1,12 +1,25 @@
 <!doctype html>
+<!--
+  Hexfarers: a hex-island trading and building game against AI bots.
+  Copyright (C) 2026 dusiaclaw
+
+  This program is free software: you can redistribute it and/or modify it under the terms of the
+  GNU General Public License as published by the Free Software Foundation, either version 3 of the
+  License, or (at your option) any later version. It is distributed WITHOUT ANY WARRANTY; see the
+  LICENSE file or <https://www.gnu.org/licenses/>.
+
+  Independent, open-source fan project. Not affiliated with, endorsed by, or associated with
+  CATAN GmbH or CATAN Studio.
+  SPDX-License-Identifier: GPL-3.0-or-later
+-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#0b3d5c">
-<link rel="manifest" href="manifest.webmanifest?b=d1">
-<link rel="icon" type="image/png" href="app-icon-192.png?b=d1">
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-180.png?b=d1">
+<link rel="manifest" href="manifest.webmanifest?b=e1">
+<link rel="icon" type="image/png" href="app-icon-192.png?b=e1">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-180.png?b=e1">
 <meta name="apple-mobile-web-app-title" content="Hexfarers">
 <meta name="application-name" content="Hexfarers">
 <meta name="description" content="Hexfarers: a hex-island trading and building game against AI bots. Works offline.">
@@ -112,7 +125,14 @@ table.st tr.hd td{background:var(--btn);font-weight:700;text-align:left}
 #logbtn{position:absolute;left:6px;top:50px;z-index:6;width:38px;height:38px;border-radius:50%;border:0;background:rgba(0,0,0,.45);color:#fff;font-size:18px}
 #top.many{grid-template-columns:repeat(3,1fr)}
 .pl{cursor:pointer}
-#log{cursor:pointer}
+#sndbtn{position:absolute;left:6px;top:94px;z-index:6;width:38px;height:38px;border-radius:50%;border:0;background:rgba(0,0,0,.45);color:#fff;font-size:18px}
+#xbar{position:absolute;left:6px;bottom:27px;font-size:12px;background:rgba(0,0,0,.55);border-radius:8px;padding:3px 8px;z-index:4;white-space:nowrap;cursor:pointer;max-width:calc(100% - 12px);overflow:hidden;text-overflow:ellipsis}
+#xbar:empty{display:none}
+#endbtn{background:#c2571a;color:#fff;border:0;border-radius:10px;padding:10px 14px;font-size:14px;font-weight:700;white-space:nowrap}
+#endbtn.hide{display:none}
+#dice.tapme{cursor:pointer;border-radius:10px;padding:2px 4px;box-shadow:0 0 0 2px #ffd77a;animation:dpulse 1.1s ease-in-out infinite}
+@keyframes dpulse{50%{box-shadow:0 0 0 5px rgba(255,215,122,.35)}}
+#dice .hint{font-size:11px;font-weight:700;color:#ffd77a}
 .lg-r{margin:8px 0 2px;font-weight:800;color:#ffd77a;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
 .lg-l{font-size:13px;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.07)}
 .logbox{max-height:58vh;overflow:auto;margin:6px 0}
@@ -153,14 +173,15 @@ body.side .chip{flex:1 1 27%}
     <button id="gear" aria-label="Settings">⚙</button>
     <button id="statbtn" aria-label="Statistics">📊</button>
     <button id="logbtn" aria-label="Game log">📜</button>
+    <button id="sndbtn" aria-label="Sound on or off">🔊</button>
+    <div id="xbar"></div>
     <div id="bank"></div>
     <div id="zoomctl"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="zfit" aria-label="Reset zoom">⤢</button></div>
   </div>
   <div id="panel">
-    <div id="msgrow"><div id="msg"></div><div id="dice"></div></div>
+    <div id="msgrow"><div id="msg"></div><button id="endbtn" data-a="end">End turn</button><div id="dice"></div></div>
     <div id="hand"></div>
     <div id="btns"></div>
-    <div id="log"></div>
   </div>
 </div>
 <div id="modal" class="hidden"><div id="mbox"></div></div>
@@ -169,7 +190,11 @@ body.side .chip{flex:1 1 27%}
 /* ===== Hexfarers: a hex-island trading & building game (offline, vs AI) ===== */
 const RES=['wood','brick','sheep','wheat','ore'];
 const EMO={wood:'🌲',brick:'🧱',sheep:'🐑',wheat:'🌾',ore:'⛰️'};
-const HEXCOL={wood:'#3f8f4a',brick:'#c8693a',sheep:'#a8d878',wheat:'#ecca4e',ore:'#9097a6',desert:'#e8d9a8',sea:'#1d6a99'};
+const EMO0={...EMO};
+const RSTYLES={classic:{name:'Classic',e:{wood:'🌲',brick:'🧱',sheep:'🐑',wheat:'🌾',ore:'⛰️'}},goods:{name:'Raw goods',e:{wood:'🪵',brick:'🧱',sheep:'🧶',wheat:'🌾',ore:'🪨'}},crafts:{name:'Crafted',e:{wood:'🌳',brick:'🏺',sheep:'🐏',wheat:'🍞',ore:'💎'}},letters:{name:'Letters',e:{wood:'Ⓦ',brick:'Ⓑ',sheep:'Ⓢ',wheat:'Ⓖ',ore:'Ⓞ'}}};
+function applyRStyle(){Object.assign(EMO,(RSTYLES[S.rstyle]||RSTYLES.classic).e);}
+const remo=t=>(!S.rstyle||S.rstyle==='classic'||typeof t!=='string')?t:t.split(/(<!--keep-->[\s\S]*?<!--\/keep-->)/).map(p=>p.startsWith('<!--keep-->')?p:p.replace(/🌲|🧱|🐑|🌾|⛰️/g,m=>EMO[RES.find(r=>EMO0[r]===m)]||m)).join('');
+const HEXCOL={gold:'#d9a520',wood:'#3f8f4a',brick:'#c8693a',sheep:'#a8d878',wheat:'#ecca4e',ore:'#9097a6',desert:'#e8d9a8',sea:'#1d6a99'};
 const THEMES={
   ocean:{name:'Ocean',bg:'#0b3d5c',tiles:{wood:'#3f8f4a',brick:'#c8693a',sheep:'#a8d878',wheat:'#ecca4e',ore:'#9097a6',desert:'#e8d9a8',sea:'#1d6a99'}},
   night:{name:'Night',bg:'#05070d',tiles:{wood:'#2f6b3a',brick:'#a14f2c',sheep:'#86b35e',wheat:'#c9a53a',ore:'#6f7686',desert:'#bfae80',sea:'#16406a'}},
@@ -181,8 +206,8 @@ function applyTheme(){
   document.documentElement.dataset.theme=k;Object.assign(HEXCOL,t.tiles);
   const m=document.querySelector('meta[name=theme-color]');if(m)m.content=t.bg;
 }
-const PCOL=['#e53935','#1e88e5','#fb8c00','#8e24aa','#ec407a','#f1f1f1'];
-const COLS_STD=[['Red','#e53935'],['Blue','#1e88e5'],['Orange','#fb8c00'],['Purple','#8e24aa'],['Pink','#ec407a'],['White','#f1f1f1']];
+const PCOL=['#e53935','#1e88e5','#fb8c00','#8e24aa','#ec407a','#f1f1f1','#fdd835'];
+const COLS_STD=[['Red','#e53935'],['Blue','#1e88e5'],['Orange','#fb8c00'],['Purple','#8e24aa'],['Pink','#ec407a'],['White','#f1f1f1'],['Yellow','#fdd835']];
 const COLS_CB=[['Orange','#E69F00'],['Sky blue','#56B4E9'],['Green','#009E73'],['Yellow','#F0E442'],['Blue','#0072B2'],['Vermilion','#D55E00']];   // Okabe-Ito colour-blind-safe set
 const palette=()=>S.cb?COLS_CB:COLS_STD;
 const SYM=['●','▲','■','◆','★','✚'];
@@ -198,15 +223,24 @@ function applyColors(idx,saved){
   PCOL[0]=P[idx][1];for(let i=1;i<6;i++)PCOL[i]=rest[i-1][1];
 }
 const PNAME=['You','Ruby','Sky','Moss','Fern','Dune'];
-const STYLES={balanced:['⚖️','Balanced','Plays a steady all-round game.'],builder:['🛤️','Road builder','Loves roads and new settlements and chases the Longest Road.'],rusher:['🏙️','City rusher','Hoards wheat and ore for cities and development cards, and plays knights eagerly.'],trader:['🤝','Trader','Proposes and accepts trades more often, and loves ports.']};
-const DEVNAME={knight:'Knight',vp:'Victory Point',road:'Road Building',plenty:'Year of Plenty',mono:'Monopoly'};
+const STYLES={balanced:['⚖️','Balanced','Plays a steady all-round game.'],builder:['🛤️','Road builder','Loves roads and new settlements and chases the Longest Route.'],rusher:['🏙️','City rusher','Hoards wheat and ore for cities and development cards, and plays knights eagerly.'],trader:['🤝','Trader','Proposes and accepts trades more often, and loves ports.']};
+const DEVNAME={knight:'Knight',vp:'Victory Point',road:'Road Building',plenty:'Bountiful Harvest',mono:'Market Squeeze'};
 const DEVICON={knight:'🗡️',vp:'🏆',road:'🛤️',plenty:'🎁',mono:'💰'};
 const COST={ship:{wood:1,sheep:1},road:{wood:1,brick:1},settle:{wood:1,brick:1,sheep:1,wheat:1},city:{wheat:2,ore:3},dev:{sheep:1,wheat:1,ore:1}};
 const DIFFDESC={easy:'Easy: bots build haphazardly, skip some actions and accept almost any trade.',normal:'Normal: balanced bots that plan builds and use the bank.',hard:'Hard: bots pick complementary spots, race for cities, target the leader with the robber and drive hard bargains.',expert:'Expert: like Hard, but bots also grab the best spots first, favour 6s and 8s, hit the leader hard, and only trade when it clearly helps them.'};
 
 /* ---------- version & changelog ---------- */
-const VERSION='1.11',BUILD='d1';
+const VERSION='1.12',BUILD='e1';
 const CHANGELOG=[
+  {v:'1.12',date:'2026-10-27',items:[
+    'New game modes: ⛵ Barbarians, 🐟 Fishermen, 🧭 Explorers and 💰 Gold fields. Pick one on the start screen.',
+    'Legal: Hexfarers is now clearly marked as an independent fan project (see 📖 Rulebook › About), licensed under the GNU GPL v3, and some card and bonus names were replaced with original ones (Bountiful Harvest, Market Squeeze, Longest Route, Strongest Guard).',
+    'Rulebook: a 📖 Rulebook button (Settings and start screen) explains the base game, every map and every game mode.',
+    'Resource icon styles in Settings: Classic, Raw goods, Crafted or Letters.',
+    'New player colour: Yellow.',
+    '🔊 Sound button on the board to switch sound on or off in one tap.',
+    'Tap the dice to roll. The End turn button now sits in the middle, next to the dice.',
+    'Removed the small 3-line log under the buttons. The full log is still behind the 📜 button.']},
   {v:'1.11',date:'2026-10-27',items:[
     'Building styles (Settings): choose how settlements and cities look: Cottage, Castle, Tents, City blocks or Farm, with a live preview.',
     'Turn order by dice: at the start everyone rolls two dice; the highest roll places first and ties are re-rolled. You are no longer always first (rule “Who places first” lets you pick “I go first”).',
@@ -216,7 +250,7 @@ const CHANGELOG=[
     '📲 Install button on the start screen and in Settings, with step-by-step instructions for Android (Chrome) and iPhone (Safari).',
     'Proper app icons (including an Android adaptive icon and a one-colour icon for Samsung/Android themed icons) and a more complete web-app manifest.']},
   {v:'1.9',date:'2026-10-22',items:[
-    'New Islands map (Seafarers-style): several islands in open sea. Build ships 🌲🐑 to reach new islands; the first settlement on each new island earns +1 VP. Roads stay on land, ships on water, and they link only at your own settlements and cities.',
+    'New Islands map (sea-exploration variant): several islands in open sea. Build ships 🌲🐑 to reach new islands; the first settlement on each new island earns +1 VP. Roads stay on land, ships on water, and they link only at your own settlements and cities.',
     'Custom game rules (start screen): victory points 8/10/12, starting cards, hand limit, bank rate 4:1 or 3:1 and a friendly robber.',
     'Bot chat and emotes: bots comment on robberies, cities, awards, trades and the final result (switch in Settings).',
     'New Expert difficulty: sharper bots that plan around the leader, deny good spots, and value trades by need.',
@@ -258,7 +292,7 @@ const CHANGELOG=[
     'Bot difficulty: Easy, Normal, Hard.',
     'Fix: My cards can now always be opened, and cards bought this turn show a 🔒 badge until they unlock.']},
   {v:'1.0',date:'2026-10-22',items:[
-    'First release: a Catan-style game ("Hexfarers") for 1–3 bots. Randomised hex island, ports, resources, roads, settlements, cities, development cards, robber, Longest Road, Largest Army, bank and player trades.',
+    'First release: "Hexfarers", a hex-island trading and building game, for 1–3 bots. Randomised hex island, ports, resources, roads, settlements, cities, development cards, robber, Longest Route, Strongest Guard, bank and player trades.',
     'Works offline as a single HTML file; Android project (Capacitor) provided for building an APK.']}
 ];
 function changelogModal(inGame){
@@ -269,7 +303,7 @@ function changelogModal(inGame){
 }
 
 /* ---------- settings (saved on this device) ---------- */
-const DEF={bots:3,diff:'normal',delay:1,turnPause:1.5,step:false,anim:true,hl:true,reveal:false,confirmEnd:true,confirmPick:true,offers:true,layout:'auto',color:0,map:'std',personas:true,sound:true,haptics:true,cb:false,theme:'ocean',bstyle:'classic',chat:true,rules:{vp:10,start:'std',friendly:false,hand:7,rate:4,order:'roll'}};
+const DEF={bots:3,diff:'normal',delay:1,turnPause:1.5,step:false,anim:true,hl:true,reveal:false,confirmEnd:true,confirmPick:true,offers:true,layout:'auto',color:0,map:'std',personas:true,sound:true,haptics:true,cb:false,theme:'ocean',bstyle:'classic',rstyle:'classic',xmode:'classic',chat:true,rules:{vp:10,start:'std',friendly:false,hand:7,rate:4,order:'roll'}};
 let S={...DEF,rules:{...DEF.rules}};
 try{Object.assign(S,JSON.parse(localStorage.getItem('hexfarers.settings')||'{}'));}catch(e){}
 S.rules=Object.assign({},DEF.rules,S.rules||{});
@@ -309,10 +343,10 @@ function monopolize(p,r){
 }
 const cards=p=>sum(p.res);
 const isAI=p=>G.players[p].ai;
-const pubVP=p=>p.settles+2*p.cities+(G.lr===p.id?2:0)+(G.la===p.id?2:0)+(p.bonus||0);
+const pubVP=p=>p.settles+2*p.cities+(G.lr===p.id?2:0)+(G.la===p.id?2:0)+(p.bonus||0)+(p.xvp||0);
 const totVP=p=>pubVP(p)+p.dev.vp+p.devNew.vp;
 function log(m){G.log.push({m,t:G.turnId,s:G.phase==='setup'});if(G.log.length>600)G.log.shift();sfxFor(m);chatFor(m);}
-const logText=x=>typeof x==='string'?x:x.m;
+const logText=x=>remo(typeof x==='string'?x:x.m);
 const colorize=t=>t.replace(/\b(You|Ruby|Sky|Moss|Fern|Dune)\b/g,n=>`<span style="color:${PCOL[PNAME.indexOf(n)]};font-weight:700">${n}</span>`);
 /* ---------- sound & haptics ---------- */
 let AC=null;
@@ -371,18 +405,18 @@ function chatFor(m){
   if(!G||!S.chat)return;
   const nm=n=>PNAME.indexOf(n);let x;
   if(x=m.match(/^(\w+) built a city/)){const p=nm(x[1]);if(p>0)chat(p,'city',.35);}
-  else if(x=m.match(/^(\w+) has the (Longest Road|Largest Army)/)){const p=nm(x[1]);if(p>0)chat(p,'award',.7);}
+  else if(x=m.match(/^(\w+) has the (Longest Route|Strongest Guard)/)){const p=nm(x[1]);if(p>0)chat(p,'award',.7);}
   else if(x=m.match(/^(\w+) stole your/)){chat(nm(x[1]),'gloat',.6);}
   else if(x=m.match(/^You stole 1\S* from (\w+)/)){chat(nm(x[1]),'robbed',.8);}
   else if(x=m.match(/^(\w+) played a Knight/)){const p=nm(x[1]);if(p>0)chat(p,'knight',.4);}
-  else if(x=m.match(/^(\w+) played Monopoly/)){const p=nm(x[1]);if(p>0)chat(p,'mono',.8);}
+  else if(x=m.match(/^(\w+) played Market Squeeze/)){const p=nm(x[1]);if(p>0)chat(p,'mono',.8);}
   else if(x=m.match(/^You traded .* with (Ruby|Sky|Moss|Fern|Dune)$/)){chat(nm(x[1]),'trade',.7);}
   else if(/ wins!$/.test(m)){const w=nm(m.split(' ')[0]);if(w>0)chat(w,'win',1,true);else if(G.n>1)chat(1+Math.floor(Math.random()*(G.n-1)),'lose',1,true);}
 }
 function sfxFor(m){
   if(/ wins!/.test(m))sfx('win');
   else if(/built a (road|settlement|city|ship)/.test(m))sfx('build');
-  else if(/Longest Road|Largest Army/.test(m))sfx('fanfare');
+  else if(/Longest Route|Strongest Guard/.test(m))sfx('fanfare');
   else if(/traded/.test(m))sfx('trade');
   else if(/bought/.test(m))sfx('dev');
 }
@@ -478,7 +512,8 @@ function newGame(nAI,auto,diff,map,opts){
   opts=opts||{};
   if(opts.seed)RNG=seeded(opts.seed);
   applyColors(S.color);
-  const mp=map||S.map||'std',big=mp==='large';
+  const xm=opts.xm||(opts.daily?'classic':S.xmode)||'classic';
+  const mp=(XMODES[xm]&&XMODES[xm].sea)?'sea':(map||S.map||'std'),big=mp==='large';
   const R=opts.daily?{...DEF.rules}:{...DEF.rules,...(S.rules||{})};
   if(!big)nAI=Math.min(nAI,3);nAI=Math.min(nAI,5);
   buildBoard(mp);
@@ -490,6 +525,11 @@ function newGame(nAI,auto,diff,map,opts){
   for(let i=0;i<n;i++)G.players.push({id:i,res:emptyRes(),dev:emptyDev(),devNew:emptyDev(),knights:0,roads:0,settles:0,cities:0,ships:0,bonus:0,home:[],ai:!!auto||i>0});
   {const sty=shuffle(['builder','rusher','trader','balanced']);let k=0;
    for(const p of G.players)if(p.ai)p.style=S.personas?sty[(k++)%4]:'balanced';}
+  G.xm=XMODES[xm]?xm:'classic';
+  G.players.forEach(p=>{p.xvp=0;p.ak=0;p.fish=0;});
+  if(G.xm==='barbarians')G.barb={pos:0,len:7,att:0};
+  if(G.xm==='gold'){const c=shuffle(H.map((h,i)=>i).filter(i=>H[i].isl>0&&RES.includes(H[i].res)&&H[i].num));c.slice(0,Math.min(3,Math.max(2,Math.floor(c.length/4)))).forEach(i=>H[i].res='gold');}
+  if(G.xm==='explore')H.forEach(h=>{if(h.isl>0&&h.res!=='sea')h.fog=true;});
   RNG=Math.random;
   G.st={rolls:Array(13).fill(0),vp:[],start:Date.now(),p:G.players.map(()=>newPS())};
   if(R.start!=='std'){const k=R.start==='pack'?1:3;G.players.forEach(p=>RES.forEach(r=>{p.res[r]+=k;G.bank[r]-=k;ST(p.id).gainOther[r]+=k;}));}
@@ -520,7 +560,7 @@ function robberOK(i,p){
   return !owners.length||owners.some(o=>pubVP(G.players[o])>2);
 }
 function robberCands(p){
-  let c=H.map((h,i)=>i).filter(i=>i!==G.robber&&H[i].res!=='sea');
+  let c=H.map((h,i)=>i).filter(i=>i!==G.robber&&H[i].res!=='sea'&&!H[i].fog);
   const f=c.filter(i=>robberOK(i,p));return f.length?f:c;
 }
 function recalcBonus(pid){
@@ -550,31 +590,32 @@ function updateLR(){
   G.players.forEach(p=>{ST(p.id).maxRoad=Math.max(ST(p.id).maxRoad,G.lens[p.id]);});
   const mx=Math.max(...G.lens),leaders=G.lens.map((l,i)=>l===mx?i:-1).filter(i=>i>=0),old=G.lr;
   if(mx<5)G.lr=null;else if(G.lr!==null&&leaders.includes(G.lr)){}else G.lr=leaders.length===1?leaders[0]:null;
-  if(G.lr!==old&&G.lr!==null)log(`${PNAME[G.lr]} has the Longest Road (${mx})`);
+  if(G.lr!==old&&G.lr!==null)log(`${PNAME[G.lr]} has the Longest Route (${mx})`);
 }
-function checkArmy(p){const pl=G.players[p];if(pl.knights>=3&&G.la!==p&&(G.la===null||pl.knights>G.players[G.la].knights)){G.la=p;log(`${PNAME[p]} has the Largest Army`);}}
+function checkArmy(p){const pl=G.players[p];if(pl.knights>=3&&G.la!==p&&(G.la===null||pl.knights>G.players[G.la].knights)){G.la=p;log(`${PNAME[p]} has the Strongest Guard`);}}
 function placeSettle(pid,v,free,grant){
   const pl=G.players[pid];if(!free)pay(pl,COST.settle);
   V[v].owner=pid;V[v].city=false;pl.settles++;ST(pid).built.settle++;log(`${PNAME[pid]} built a settlement`);
   if(G.map==='sea'){const old=pl.bonus||0;if(free&&!(pl.home||[]).includes(V[v].isl)){pl.home=pl.home||[];pl.home.push(V[v].isl);}recalcBonus(pid);if(pl.bonus>old)log(`${PNAME[pid]} reached a new island: +1 VP`);}
-  if(grant)for(const hi of V[v].hexes)if(H[hi].res!=='desert'&&H[hi].res!=='sea'){pl.res[H[hi].res]++;G.bank[H[hi].res]--;ST(pid).gainOther[H[hi].res]++;}
+  if(grant)for(const hi of V[v].hexes)if(RES.includes(H[hi].res)){pl.res[H[hi].res]++;G.bank[H[hi].res]--;ST(pid).gainOther[H[hi].res]++;}
   updateLR();
 }
-function placeShip(pid,e,free){const pl=G.players[pid];if(!free)pay(pl,COST.ship);E[e].owner=pid;E[e].kind='ship';pl.ships=(pl.ships||0)+1;ST(pid).built.ship=(ST(pid).built.ship||0)+1;log(`${PNAME[pid]} built a ship`);updateLR();}
-function placeRoad(pid,e,free){const pl=G.players[pid];if(!free)pay(pl,COST.road);E[e].owner=pid;E[e].kind='road';pl.roads++;ST(pid).built.road++;log(`${PNAME[pid]} built a road`);updateLR();}
+function placeShip(pid,e,free){const pl=G.players[pid];if(!free)pay(pl,COST.ship);E[e].owner=pid;E[e].kind='ship';pl.ships=(pl.ships||0)+1;ST(pid).built.ship=(ST(pid).built.ship||0)+1;log(`${PNAME[pid]} built a ship`);explore(pid,[E[e].a,E[e].b]);updateLR();}
+function placeRoad(pid,e,free){const pl=G.players[pid];if(!free)pay(pl,COST.road);E[e].owner=pid;E[e].kind='road';pl.roads++;ST(pid).built.road++;log(`${PNAME[pid]} built a road`);explore(pid,[E[e].a,E[e].b]);updateLR();}
 function placeCity(pid,v){const pl=G.players[pid];pay(pl,COST.city);V[v].city=true;pl.settles--;pl.cities++;ST(pid).built.city++;log(`${PNAME[pid]} built a city`);}
 function checkWin(p){
   if(G.over)return;
   if(totVP(G.players[p])>=(G.vpWin||10)){G.over=true;G.winner=p;log(`${PNAME[p]} wins!`);snapStats();clearSave();recordGame();render();showWin();}
 }
 function distribute(s){
-  const gain=G.players.map(emptyRes),src=G.players.map(()=>[]);
+  const gain=G.players.map(emptyRes),src=G.players.map(()=>[]),gold=G.players.map(()=>0);
   for(let i=0;i<H.length;i++){
     const h=H[i];if(h.num!==s)continue;
     for(const v of h.verts){
       const o=V[v].owner;if(o===-1)continue;
       const n=V[v].city?2:1;
-      if(i===G.robber){ST(o).blocked[h.res]+=n;continue;}
+      if(i===G.robber){if(RES.includes(h.res))ST(o).blocked[h.res]+=n;continue;}
+      if(h.res==='gold'){gold[o]+=n;continue;}
       gain[o][h.res]+=n;src[o].push({hi:i,res:h.res,n});
     }
   }
@@ -595,8 +636,13 @@ function distribute(s){
   }
   let any=false;
   gain.forEach((g,i)=>{const t=RES.filter(r=>g[r]).map(r=>g[r]+EMO[r]).join(' ');if(t){any=true;RES.forEach(r=>{G.players[i].res[r]+=g[r];G.bank[r]-=g[r];ST(i).gainDice[r]+=g[r];});log(`${PNAME[i]} gets ${t}`);}});
-  if(!any)log('Nobody collects resources.');
-  return {gain,src};
+  if(!any&&!gold.some(x=>x))log('Nobody collects resources.');
+  if(XM()==='fish'){
+    const caught=G.players.map(()=>new Set());
+    H.forEach((h,i)=>{if(h.num!==s||i===G.robber)return;for(const v of h.verts){const o=V[v].owner;if(o!==-1&&isCoast(v))caught[o].add(v);}});
+    caught.forEach((st,i)=>{if(st.size){G.players[i].fish=(G.players[i].fish||0)+st.size;log(`${PNAME[i]} caught ${st.size}🐟`);}});
+  }
+  return {gain,src,gold};
 }
 
 /* ---------- animation helpers ---------- */
@@ -604,7 +650,7 @@ let toastTok=0;
 async function toast(html,ms,scaled=true){
   if(quick()||ms<=0)return;
   const t=$('toast'),my=++toastTok;
-  t.innerHTML=html;t.classList.add('show');
+  t.innerHTML=remo(html);t.classList.add('show');
   await(scaled?sleep(ms):pause(ms));
   if(my===toastTok)t.classList.remove('show');
 }
@@ -671,11 +717,13 @@ async function rollDice(p){
     await robberSequence(p);
   }else{
     const before=G.players.map(pl=>({...pl.res}));
-    const {gain,src}=distribute(s);
+    const {gain,src,gold}=distribute(s);
     if(S.hl)G.hl=s;
     render();
     await animateGains(s,gain,src,before);
+    if(gold.some(x=>x))await goldPicks(gold);
   }
+  if(XM()==='barbarians')await barbStep();
   render();
 }
 function autoDiscard(q,need){
@@ -705,7 +753,7 @@ async function robberSequence(p){
   if(stolen&&(p===0||vic===0))sfx('steal');
   if(stolen){if(vic===0)popChip(stolen,'−1',true);if(p===0)popChip(stolen,'+1');}
   if(!quick()){
-    const hx=H[h],tile=hx.res==='desert'?'🏜️ Desert':`${EMO[hx.res]} ${hx.num}`;
+    const hx=H[h],tile=hx.res==='desert'?'🏜️ Desert':`${EMO[hx.res]||'💰'} ${hx.num}`;
     const who=p===0?'You':PNAME[p];
     let html=`<div>🥷 ${who} moved the robber to <b>${tile}</b></div>`;
     if(stolen){
@@ -722,7 +770,7 @@ const hardish=()=>G.diff==='hard'||G.diff==='expert';
 const noise=()=>Math.random()*NOISE[G.diff];
 function vScore(v,pid){
   let s=0;const seen=new Set();
-  for(const hi of V[v].hexes){const h=H[hi];if(h.res==='desert')continue;s+=pips(h.num);seen.add(h.res);}
+  for(const hi of V[v].hexes){const h=H[hi];if(h.fog){s+=3.6;continue;}if(h.res==='desert'||h.res==='sea')continue;s+=pips(h.num)*(h.res==='gold'?1.3:1);seen.add(h.res);}
   s+=seen.size*1.5;if(V[v].port)s+=1.5;
   if(pid!==undefined&&G.players[pid]){
     const sy=G.players[pid].style;
@@ -839,6 +887,7 @@ function bestShipEdge(p){let b=null,bs=0.5;for(const e of E){if(!roadOK(e.id,p,'
 function aiStep(p){
   const pl=G.players[p];
   if(G.diff==='easy'&&Math.random()<.2)return false;      // easy bots sometimes just stop
+  if(XM()==='fish'&&(pl.fish||0)>=2&&aiFish(p))return true;
   const useDev=G.diff!=='easy'||Math.random()<.5;
   if(!G.devPlayed&&useDev){
     if(pl.dev.road>0&&pl.roads<14&&bestRoadEdge(p)!==null){
@@ -849,13 +898,13 @@ function aiStep(p){
     if(pl.dev.plenty>0&&sum(G.bank)>=2){
       pl.dev.plenty--;G.devPlayed=true;ST(p).devPlayed.plenty++;
       for(let k=0;k<2;k++){const r=RES.filter(x=>G.bank[x]>0).sort((a,b)=>pl.res[a]-pl.res[b])[0];pl.res[r]++;G.bank[r]--;ST(p).gainOther[r]++;}
-      log(`${PNAME[p]} played Year of Plenty`);return true;
+      log(`${PNAME[p]} played Bountiful Harvest`);return true;
     }
     if(pl.dev.mono>0){
       pl.dev.mono--;G.devPlayed=true;ST(p).devPlayed.mono++;
       const r=RES.slice().sort((a,b)=>pl.res[a]-pl.res[b])[0];
       const n=monopolize(p,r);
-      log(`${PNAME[p]} played Monopoly on ${EMO[r]} (took ${n})`);return true;
+      log(`${PNAME[p]} played Market Squeeze on ${EMO[r]} (took ${n})`);return true;
     }
   }
   const sp=legalSettles(p),goals=aiGoals(p);
@@ -876,8 +925,8 @@ function aiStep(p){
 async function aiTurn(p){
   const pl=G.players[p];
   G.phase='roll';render();await sleep(500);
-  if(pl.dev.knight>0&&!G.devPlayed&&(H[G.robber].verts.some(v=>V[v].owner===p)||(hardish()&&pl.knights>=2)||(G.diff==='expert'&&G.players.some(q=>q.id!==p&&pubVP(q)>=(G.vpWin||10)-4))||(pl.style==='rusher'&&pl.knights>=1))){
-    pl.dev.knight--;pl.knights++;G.devPlayed=true;ST(p).devPlayed.knight++;log(`${PNAME[p]} played a Knight`);checkArmy(p);
+  if(pl.dev.knight>0&&!G.devPlayed&&(H[G.robber].verts.some(v=>V[v].owner===p)||(hardish()&&pl.knights>=2)||(G.diff==='expert'&&G.players.some(q=>q.id!==p&&pubVP(q)>=(G.vpWin||10)-4))||(pl.style==='rusher'&&pl.knights>=1)||(G.barb&&G.barb.pos>=4&&pl.cities>0&&G.diff!=='easy'))){
+    pl.dev.knight--;pl.knights++;pl.ak=(pl.ak||0)+1;G.devPlayed=true;ST(p).devPlayed.knight++;log(`${PNAME[p]} played a Knight`);checkArmy(p);
     await robberSequence(p);checkWin(p);if(G.over)return;
   }
   await rollDice(p);G.phase='main';render();
@@ -887,6 +936,157 @@ async function aiTurn(p){
     render();checkWin(p);await sleep(650);
   }
 }
+
+/* ---------- optional game modes ---------- */
+const XMODES={
+  classic:{name:'Classic',icon:'⬡',desc:'The base game.'},
+  barbarians:{name:'Barbarians',icon:'⛵',desc:'A barbarian fleet sails toward the island. When it lands, all active knights together must match the number of cities, or the weakest defenders lose a city. The best defender earns +1 VP.'},
+  fish:{name:'Fishermen',icon:'🐟',desc:'Settlements and cities on the coast catch fish when a neighbouring tile produces. Spend fish to chase the robber away or get resources, roads and development cards.'},
+  explore:{name:'Explorers',icon:'🧭',sea:true,desc:'Islands map: the outer islands are hidden in fog. Sail out to discover them; every tile you reveal gives you 1 of its resource.'},
+  gold:{name:'Gold fields',icon:'💰',sea:true,desc:'Islands map: gold fields on the outer islands produce any resource you choose.'}
+};
+const XM=()=>(G&&G.xm)||'classic';
+const isCoast=v=>V[v].hexes.length<3||V[v].hexes.some(i=>H[i].res==='sea');
+function aiNeed(p){
+  const pl=G.players[p],g=aiGoals(p)[0],c=COST[g]||COST.settle;
+  return RES.find(r=>(c[r]||0)>pl.res[r]&&G.bank[r]>0)||RES.filter(r=>G.bank[r]>0).sort((a,b)=>pl.res[a]-pl.res[b])[0]||null;
+}
+function explore(pid,verts){
+  if(XM()!=='explore')return;
+  for(const v of verts)for(const hi of V[v].hexes){
+    const h=H[hi];if(!h.fog)continue;
+    h.fog=false;
+    if(RES.includes(h.res)&&G.bank[h.res]>0){G.players[pid].res[h.res]++;G.bank[h.res]--;ST(pid).gainOther[h.res]++;log(`🧭 ${PNAME[pid]} discovered ${EMO[h.res]} ${h.num} and ${pid===0?'get':'gets'} 1${EMO[h.res]}`);}
+    else log(`🧭 ${PNAME[pid]} discovered a ${h.res==='desert'?'desert':'new tile'}`);
+    if(pid===0)G.undo=[];
+  }
+}
+async function goldPicks(gold){
+  for(let i=0;i<gold.length;i++){
+    for(let k=0;k<gold[i];k++){
+      let r;
+      if(isAI(i))r=aiNeed(i);
+      else{
+        if(!RES.some(x=>G.bank[x]>0))r=null;
+        else r=await new Promise(res=>{
+          modal(`<h3>💰 Gold field</h3><div class="small">Choose a resource (${k+1}/${gold[i]}). Numbers show what the bank has left.</div><div class="row">${RES.map(x=>`<button data-r="${x}" class="big" ${G.bank[x]>0?'':'disabled'}>${EMO[x]}<small> ${G.bank[x]}</small></button>`).join('')}</div>`);
+          $('mbox').querySelectorAll('button[data-r]').forEach(b=>b.onclick=()=>{closeModal();res(b.dataset.r);});
+        });
+      }
+      if(!r||G.bank[r]<1)continue;
+      G.players[i].res[r]++;G.bank[r]--;ST(i).gainDice[r]++;
+      log(`💰 ${PNAME[i]} ${i===0?'take':'takes'} 1${EMO[r]} from a gold field`);
+      if(i===0){render();popChip(r,'+1');sfx('card');}
+    }
+  }
+  render();
+}
+async function barbStep(){
+  const b=G.barb;if(!b||G.over)return;
+  if(Math.random()<.5)return;
+  b.pos++;
+  if(b.pos<b.len){log(`⛵ The barbarians sail closer (${b.pos}/${b.len})`);return;}
+  b.pos=0;b.att++;
+  const str=G.players.reduce((a,p)=>a+p.cities,0),def=G.players.reduce((a,p)=>a+(p.ak||0),0);
+  let msg,win=null;
+  if(!str)msg='⛵ The barbarians land, find no cities and sail away.';
+  else if(def>=str){
+    const mx=Math.max(...G.players.map(p=>p.ak||0)),top=G.players.filter(p=>(p.ak||0)===mx);
+    if(top.length===1){top[0].xvp=(top[0].xvp||0)+1;win=top[0].id;msg=`🛡️ The island holds (${def} knights vs ${str} cities)! ${PNAME[top[0].id]} is the Defender: +1 VP.`;}
+    else{
+      const got=[];top.forEach(p=>{if(G.deck.length){const c=G.deck.pop();p.devNew[c]++;ST(p.id).devBought[c]++;got.push(PNAME[p.id]);}});
+      msg=`🛡️ The island holds (${def} knights vs ${str} cities)! Tied defenders${got.length?' ('+got.join(', ')+')':''} each get a development card.`;
+    }
+  }else{
+    const cands=G.players.filter(p=>p.cities>0),mn=Math.min(...cands.map(p=>p.ak||0)),lose=cands.filter(p=>(p.ak||0)===mn);
+    lose.forEach(p=>{
+      const v=bestBy(V.filter(x=>x.owner===p.id&&x.city),x=>-vScore(x.id));
+      if(v){v.city=false;p.cities--;p.settles++;}
+    });
+    msg=`🔥 The barbarians win (${def} knights vs ${str} cities)! ${lose.map(p=>PNAME[p.id]).join(', ')} ${lose.length>1?'each lose':(lose[0].id===0?'lose':'loses')} a city.`;
+  }
+  G.players.forEach(p=>p.ak=0);
+  log(msg);render();sfx('robber');
+  await toast(`<div>${msg}</div><div class="small">All knights return home.</div>`,3200);
+  if(win!==null)checkWin(win);
+}
+function aiFish(p){
+  const pl=G.players[p],des=H.findIndex(h=>h.res==='desert');
+  if(pl.fish>=2&&des>=0&&G.robber!==des&&H[G.robber].verts.some(v=>V[v].owner===p)){pl.fish-=2;G.robber=des;log(`🐟 ${PNAME[p]} paid 2🐟 to chase the robber to the desert`);return true;}
+  if(pl.fish>=7&&G.deck.length&&G.diff!=='easy'){pl.fish-=7;const c=G.deck.pop();pl.devNew[c]++;ST(p).devBought[c]++;log(`🐟 ${PNAME[p]} traded 7🐟 for a development card`);return true;}
+  if(pl.fish>=4){const r=aiNeed(p);if(!r)return false;pl.fish-=4;pl.res[r]++;G.bank[r]--;ST(p).gainOther[r]++;log(`🐟 ${PNAME[p]} traded 4🐟 for 1${EMO[r]}`);return true;}
+  return false;
+}
+function fishModal(){
+  const me=G.players[0],f=me.fish||0,des=H.findIndex(h=>h.res==='desert');
+  const opt=(id,n,l,ok)=>`<div class="resp ${f>=n&&ok?'':'no'}"><span><b>${n}🐟</b> ${l}</span><button data-f="${id}" ${f>=n&&ok?'':'disabled'}>Use</button></div>`;
+  modal(`<h3>🐟 Fish: you have ${f}</h3>
+    ${opt('rob',2,'Chase the robber to the desert',des>=0&&G.robber!==des)}
+    ${opt('res',4,'Take 1 resource of your choice',RES.some(r=>G.bank[r]>0))}
+    ${opt('road',5,'Build a road for free',me.roads<15&&E.some(e=>roadOK(e.id,0)))}
+    ${opt('dev',7,'Draw a development card',G.deck.length>0)}
+    <div class="small">Coastal settlements and cities catch 1🐟 each when a neighbouring tile produces.</div>
+    <div class="row"><button id="fc" class="ghost">Close</button></div>`);
+  $('fc').onclick=closeModal;
+  $('mbox').querySelectorAll('button[data-f]').forEach(b=>b.onclick=async()=>{
+    const k=b.dataset.f;
+    if(k==='rob'){me.fish-=2;G.robber=des;log('🐟 You chased the robber to the desert');closeModal();render();}
+    else if(k==='dev'){me.fish-=7;const c=G.deck.pop();me.devNew[c]++;ST(0).devBought[c]++;log('🐟 You traded 7🐟 for a development card');closeModal();render();}
+    else if(k==='res'){
+      modal(`<h3>🐟 Take 1 resource</h3><div class="row">${RES.map(r=>`<button data-r="${r}" class="big" ${G.bank[r]>0?'':'disabled'}>${EMO[r]}<small> ${G.bank[r]}</small></button>`).join('')}</div><div class="row"><button id="fb" class="ghost">Back</button></div>`);
+      $('fb').onclick=fishModal;
+      $('mbox').querySelectorAll('button[data-r]').forEach(c=>c.onclick=()=>{const r=c.dataset.r;me.fish-=4;me.res[r]++;G.bank[r]--;ST(0).gainOther[r]++;log(`🐟 You traded 4🐟 for 1${EMO[r]}`);closeModal();render();popChip(r,'+1');});
+    }else if(k==='road'){
+      closeModal();const e=await pickBoard('road');
+      if(e!=null){me.fish-=5;placeRoad(0,e,true);G.undo=[];render();checkWin(0);}else render();
+    }
+  });
+}
+function renderXbar(){
+  const x=$('xbar'),m=XM();let h='';
+  if(m==='barbarians'&&G.barb){const b=G.barb,str=G.players.reduce((a,p)=>a+p.cities,0),def=G.players.reduce((a,p)=>a+(p.ak||0),0);h=`⛵ <span style="letter-spacing:1px">${'●'.repeat(b.pos)}${'○'.repeat(b.len-b.pos)}</span> 🏰${str} vs 🗡️${def}`;}
+  else if(m==='fish')h='🐟 '+G.players.map(p=>`<b style="color:${PCOL[p.id]}">${p.fish||0}</b>`).join(' ');
+  else if(m==='explore'){const n=H.filter(h=>h.fog).length;h=n?`🧭 ${n} tile${n>1?'s':''} still in fog`:'🧭 Every island discovered';}
+  else if(m==='gold')h='💰 Gold fields: pick any resource';
+  if(x.innerHTML!==h)x.innerHTML=h;
+}
+const RULEBOOK={
+  basics:['📘 Base game',`<p><b>Goal:</b> be the first to reach the target victory points (10 by default).</p>
+    <p><b>Setup:</b> everyone rolls for turn order. In that order each player places a settlement and a road, then in reverse order a second pair. The second settlement gives you 1 card from each tile it touches.</p>
+    <p><b>Your turn:</b> roll the dice (tap them). Every tile with that number produces: each settlement on its corners gets 1 card, each city 2. Then trade and build in any order, then end your turn.</p>
+    <p><b>Building:</b> Road 🌲🧱 · Settlement 🌲🧱🐑🌾 (1 VP) · City 🌾🌾⛰️⛰️⛰️ (2 VP, replaces a settlement) · Development card 🐑🌾⛰️. Settlements must be at least two road lengths apart and (after setup) connect to your road.</p>
+    <p><b>Seven:</b> anyone holding more than the hand limit (7) discards half. The roller moves the robber, which blocks a tile, and steals 1 random card from a player there.</p>
+    <p><b>Trading:</b> with other players, or with the bank at 4:1, 3:1 at a 3:1 port, or 2:1 at a matching resource port. The bank holds 19 of each resource (24 on the Large map).</p>
+    <p><b>Development cards:</b> Knight (move the robber), Victory Point, Road Building, Bountiful Harvest, Market Squeeze. One per turn, not on the turn you bought it.</p>
+    <p><b>Bonuses:</b> Longest Route (5+ connected roads) and Strongest Guard (3+ knights played) are worth 2 VP each.</p>`],
+  maps:['🗺️ Maps',`<p><b>Standard:</b> a random 19-tile island for 2–4 players.</p>
+    <p><b>Beginner:</b> the same balanced 19-tile island every game.</p>
+    <p><b>Large:</b> 30 tiles for 4–6 players, 24 of each resource in the bank and a bigger development deck.</p>
+    <p><b>Islands:</b> several islands in open sea. Starting settlements go on the main island only. Ships 🌲🐑 sail along sea edges; roads stay on land; they join only at your own settlements and cities. Your first settlement on each new island earns +1 VP.</p>`],
+  barbarians:['⛵ Barbarians',`<p>After every roll there is a 1-in-2 chance that the barbarian fleet moves one step closer (track shown at the bottom left of the board). On step 7 they attack.</p>
+    <p><b>Attack strength</b> = the number of cities on the island. <b>Defence</b> = all <i>active</i> knights: Knight cards played since the last attack, by everyone.</p>
+    <p><b>Defended:</b> the player with the most active knights becomes Defender: +1 VP. If several tie, each draws a development card instead.</p>
+    <p><b>Lost:</b> among players who own a city, those with the fewest active knights each lose one city (it becomes a settlement).</p>
+    <p>After any attack all knights go home (active knights reset to 0). Knights still count toward Strongest Guard.</p>`],
+  fish:['🐟 Fishermen',`<p>Whenever a tile produces, every settlement or city of yours on the coast next to it also catches <b>1🐟</b> (once per building per roll; the robber's tile catches nothing). Fish do not count toward the hand limit and cannot be stolen.</p>
+    <p>Use the 🐟 Fish button on your turn: <b>2🐟</b> chase the robber to the desert · <b>4🐟</b> take 1 resource of your choice · <b>5🐟</b> build a free road · <b>7🐟</b> draw a development card.</p>`],
+  explore:['🧭 Explorers',`<p>Played on the Islands map.</p>
+    <p>Every island except the main one starts hidden in fog. When one of your ships or roads touches a fogged tile, the tile is revealed and you take 1 card of its resource (deserts give nothing).</p>
+    <p>Island bonuses work as on the Islands map: your first settlement on each new island earns +1 VP. Builds that discover tiles can't be undone.</p>`],
+  gold:['💰 Gold fields',`<p>Played on the Islands map.</p>
+    <p>A few tiles on the outer islands are gold fields. When their number is rolled, each adjacent settlement lets you take 1 resource of your choice from the bank (a city: 2). The robber blocks gold fields like any other tile.</p>`]
+};
+RULEBOOK.about=['ℹ️ About',`<p><b>Hexfarers</b> is an independent, open-source fan project. It is not affiliated with, endorsed by, or associated with CATAN GmbH or CATAN Studio.</p>
+    <p>All graphics are original and drawn in code (board, buildings, dice, app icon). Resource and other symbols are standard Unicode emoji shown with your device's own font. Rules and texts are written for this game.</p>
+    <p>Copyright © 2026 dusiaclaw. Free software under the GNU General Public License v3 (or later): you may share and modify it under the same licence. No warranty.</p>
+    <p>Source code: <a href="https://github.com/dusiaclaw/hexfarers" target="_blank" rel="noopener" style="color:#ffd77a">github.com/dusiaclaw/hexfarers</a></p>`];
+function rulebookModal(back,tab){
+  tab=RULEBOOK[tab]?tab:'basics';
+  modal(`<div class="hdr"><h3>📖 Rulebook</h3></div><div class="bsg" style="grid-template-columns:repeat(3,1fr)">${Object.keys(RULEBOOK).map(k=>`<button data-rb="${k}" class="${k===tab?'on':''}" style="padding:7px 2px">${RULEBOOK[k][0]}</button>`).join('')}</div><div class="info" style="max-height:55vh;overflow:auto">${RULEBOOK[tab][1]}</div><div class="row"><button id="rbb" class="ghost">${back?'Back':'Close'}</button></div>`);
+  $('mbox').querySelectorAll('button[data-rb]').forEach(b=>b.onclick=()=>rulebookModal(back,b.dataset.rb));
+  $('rbb').onclick=()=>back?back():closeModal();
+}
+const xmGrid=()=>`<div class="bsg">${Object.keys(XMODES).map(k=>`<button data-xm="${k}" class="${(S.xmode||'classic')===k?'on':''}" style="padding:6px 2px"><span style="font-size:20px">${XMODES[k].icon}</span><span>${XMODES[k].name}</span></button>`).join('')}</div>`;
 
 /* ---------- flow ---------- */
 const ORD=()=>(G&&G.order)||[...Array(G.n).keys()];
@@ -1066,7 +1266,7 @@ function humanBuy(){
 function endTurn(){nextPlayer();G.busy=true;render();turnLoop();}
 async function humanPlay(t){
   const p=G.players[0];G.busy=true;G.undo=[];p.dev[t]--;G.devPlayed=true;ST(0).devPlayed[t]++;log(`You played ${DEVNAME[t]}`);
-  if(t==='knight'){p.knights++;checkArmy(0);render();await robberSequence(0);}
+  if(t==='knight'){p.knights++;p.ak=(p.ak||0)+1;checkArmy(0);render();await robberSequence(0);}
   else if(t==='road'){
     G.noCancel=true;
     for(let i=0;i<2&&p.roads<15;i++){const e=await pickBoard('road');if(e==null)break;placeRoad(0,e,true);render();}
@@ -1077,7 +1277,7 @@ async function humanPlay(t){
 }
 
 /* ---------- modals ---------- */
-function modal(html){$('mbox').style.maxWidth='';$('mbox').innerHTML=html;$('modal').classList.remove('hidden');}
+function modal(html){$('mbox').style.maxWidth='';$('mbox').innerHTML=remo(html);$('modal').classList.remove('hidden');}
 function closeModal(){$('modal').classList.add('hidden');}
 const stepperRow=(k,r,val)=>`<div class="stp"><span class="e">${EMO[r]}</span><button data-k="${k}" data-r="${r}" data-d="1">+</button><b>${val}</b><button data-k="${k}" data-r="${r}" data-d="-1">−</button></div>`;
 const bindSteppers=(cb)=>$('mbox').querySelectorAll('button[data-k]').forEach(b=>b.onclick=()=>cb(b.dataset.k,b.dataset.r,+b.dataset.d));
@@ -1104,7 +1304,7 @@ function plentyModal(){
     const picks=[];
     const left=r=>G.bank[r]-picks.filter(x=>x===r).length;
     const draw=()=>{
-      modal(`<h3>Year of Plenty</h3><div class="small">Take 2 resources from the bank (${picks.length}/2). Numbers show what the bank has left.</div><div class="row">${RES.map(r=>`<button data-r="${r}" class="big" ${left(r)>0?'':'disabled'}>${EMO[r]}<small> ${left(r)}</small></button>`).join('')}</div>`);
+      modal(`<h3>Bountiful Harvest</h3><div class="small">Take 2 resources from the bank (${picks.length}/2). Numbers show what the bank has left.</div><div class="row">${RES.map(r=>`<button data-r="${r}" class="big" ${left(r)>0?'':'disabled'}>${EMO[r]}<small> ${left(r)}</small></button>`).join('')}</div>`);
       $('mbox').querySelectorAll('button[data-r]').forEach(b=>b.onclick=()=>{picks.push(b.dataset.r);if(picks.length===2){closeModal();res(picks);}else draw();});
     };
     draw();
@@ -1112,7 +1312,7 @@ function plentyModal(){
 }
 function monoModal(){
   return new Promise(res=>{
-    modal(`<h3>Monopoly</h3><div class="small">Take every card of one type from all opponents</div><div class="row">${RES.map(r=>`<button data-r="${r}" class="big">${EMO[r]}</button>`).join('')}</div>`);
+    modal(`<h3>Market Squeeze</h3><div class="small">Take every card of one type from all opponents</div><div class="row">${RES.map(r=>`<button data-r="${r}" class="big">${EMO[r]}</button>`).join('')}</div>`);
     $('mbox').querySelectorAll('button[data-r]').forEach(b=>b.onclick=()=>{closeModal();res(b.dataset.r);});
   });
 }
@@ -1299,16 +1499,16 @@ function devModal(){
 function infoModal(){
   modal(`<div class="hdr"><h3>What do the cards do?</h3></div><div class="info">
     <h4>Development cards (buy: 🐑 🌾 ⛰️)</h4>
-    <p>${DEVICON.knight} <b>Knight</b> (14 in deck): move the robber to another tile and steal 1 random card from a player there. Play it even before rolling. Whoever has played the most Knights (at least 3) holds <b>Largest Army</b>: +2 points.</p>
+    <p>${DEVICON.knight} <b>Knight</b> (14 in deck): move the robber to another tile and steal 1 random card from a player there. Play it even before rolling. Whoever has played the most Knights (at least 3) holds <b>Strongest Guard</b>: +2 points.</p>
     <p>${DEVICON.vp} <b>Victory Point</b> (5): worth 1 point. Stays hidden and counts automatically; no need to play it.</p>
     <p>${DEVICON.road} <b>Road Building</b> (2): build 2 roads for free.</p>
-    <p>${DEVICON.plenty} <b>Year of Plenty</b> (2): take any 2 resource cards from the bank.</p>
-    <p>${DEVICON.mono} <b>Monopoly</b> (2): name a resource; every opponent gives you all of theirs of that type.</p>
+    <p>${DEVICON.plenty} <b>Bountiful Harvest</b> (2): take any 2 resource cards from the bank.</p>
+    <p>${DEVICON.mono} <b>Market Squeeze</b> (2): name a resource; every opponent gives you all of theirs of that type.</p>
     <p><b>Limits:</b> one development card per turn (Victory Points excepted), and not on the turn you bought it.</p>
     <h4>Resource cards</h4>
     <p>🌲 Wood: roads, settlements &nbsp; 🧱 Brick: roads, settlements<br>🐑 Sheep: settlements, dev cards &nbsp; 🌾 Wheat: settlements, cities, dev cards<br>⛰️ Ore: cities, dev cards</p>
     <h4>Building</h4>
-    <p>Road 🌲🧱 · Settlement 🌲🧱🐑🌾 (1 pt) · City 🌾🌾⛰️⛰️⛰️ (2 pts) · Dev card 🐑🌾⛰️.<br>Longest Road (5+ roads) and Largest Army are worth 2 points each. First to ${G.vpWin||10} wins.</p>
+    <p>Road 🌲🧱 · Settlement 🌲🧱🐑🌾 (1 pt) · City 🌾🌾⛰️⛰️⛰️ (2 pts) · Dev card 🐑🌾⛰️.<br>Longest Route (5+ roads) and Strongest Guard are worth 2 points each. First to ${G.vpWin||10} wins.</p>
   </div><div class="row"><button id="back" class="ghost">Back</button></div>`);
   $('back').onclick=devModal;
 }
@@ -1356,8 +1556,8 @@ function rulesModal(back){
 const DKEY='hexfarers.daily';
 const DGOALS=[
   {id:'speed',text:'Win in 90 dice rolls or fewer.',t:x=>x.won&&x.rolls<=90},
-  {id:'road',text:'Win while holding the Longest Road.',t:x=>x.won&&G.lr===0},
-  {id:'army',text:'Win while holding the Largest Army.',t:x=>x.won&&G.la===0},
+  {id:'road',text:'Win while holding the Longest Route.',t:x=>x.won&&G.lr===0},
+  {id:'army',text:'Win while holding the Strongest Guard.',t:x=>x.won&&G.la===0},
   {id:'cities',text:'Win with 4 cities.',t:x=>x.won&&x.me.cities>=4},
   {id:'notrade',text:'Win without trading with other players.',t:x=>x.won&&x.st.playerTrades===0},
   {id:'cards',text:'Win after buying at least 4 development cards.',t:x=>x.won&&sum(x.st.devBought)>=4}
@@ -1401,15 +1601,15 @@ const ACH=[
   {id:'islander',icon:'⛵',name:'Island hopper',desc:'Win on the Islands map.',t:x=>x.won&&G.map==='sea'},
   {id:'daily_hero',icon:'📅',name:'Daily hero',desc:'Complete a daily challenge goal.',t:x=>x.dailyMet},
   {id:'streak3',icon:'🔥',name:'On a roll',desc:'Reach a 3-day daily challenge streak.',t:x=>x.dailyStreak>=3},
-  {id:'road_baron',icon:'🛣️',name:'Road Baron',desc:'Finish a game holding the Longest Road.',t:x=>G.lr===0},
-  {id:'iron_army',icon:'⚔️',name:'Iron Army',desc:'Finish a game holding the Largest Army.',t:x=>G.la===0},
+  {id:'road_baron',icon:'🛣️',name:'Road Baron',desc:'Finish a game holding the Longest Route.',t:x=>G.lr===0},
+  {id:'iron_army',icon:'⚔️',name:'Iron Army',desc:'Finish a game holding the Strongest Guard.',t:x=>G.la===0},
   {id:'city_planner',icon:'🏙️',name:'City Planner',desc:'Finish a game with 4 cities.',t:x=>x.me.cities>=4},
-  {id:'cornered',icon:'💰',name:'Cornered the market',desc:'Take 6 or more cards with one Monopoly.',t:x=>(x.st.monoBest||0)>=6},
+  {id:'cornered',icon:'💰',name:'Cornered the market',desc:'Take 6 or more cards with one Market Squeeze.',t:x=>(x.st.monoBest||0)>=6},
   {id:'thick',icon:'🛡️',name:'Thick-skinned',desc:'Have 5 or more cards stolen from you in one game.',t:x=>x.st.stolenFrom>=5},
   {id:'silver',icon:'🤝',name:'Silver tongue',desc:'Complete 5 or more player trades in one game.',t:x=>x.st.playerTrades>=5},
   {id:'speed',icon:'⚡',name:'Speed run',desc:'Win in 60 dice rolls or fewer.',t:x=>x.won&&x.rolls<=60},
   {id:'comeback',icon:'🔥',name:'Comeback kid',desc:'Win after trailing the leader by 3 or more points.',t:x=>x.won&&G.st.vp.some(v=>Math.max(...v.slice(1))-v[0]>=3)},
-  {id:'untouched',icon:'🕊️',name:'Untouchable',desc:'Win without ever losing a card to the robber, a discard or a monopoly.',t:x=>x.won&&x.st.stolenFrom===0&&sum(x.st.lostDiscard)===0&&sum(x.st.lostMono)===0},
+  {id:'untouched',icon:'🕊️',name:'Untouchable',desc:'Win without ever losing a card to the robber, a discard or a Market Squeeze.',t:x=>x.won&&x.st.stolenFrom===0&&sum(x.st.lostDiscard)===0&&sum(x.st.lostMono)===0},
   {id:'table',icon:'🌍',name:'Full table',desc:'Win on the Large map against 4 or more bots.',t:x=>x.won&&G.map==='large'&&G.n>=5},
   {id:'veteran',icon:'🎖️',name:'Veteran',desc:'Finish 10 games.',t:x=>x.c.games>=10},
   {id:'champion',icon:'👑',name:'Champion',desc:'Win 10 games.',t:x=>x.c.wins>=10}
@@ -1468,7 +1668,7 @@ function botModal(id){
     <div class="crow"><span>Public victory points</span><b>${pubVP(p)}</b></div>
     <div class="crow"><span>Cards in hand</span><b>${cards(p)}</b></div>
     <div class="crow"><span>Knights played</span><b>${p.knights}</b></div>
-    <div class="crow"><span>Longest road</span><b>${G.lens[id]}</b></div>
+    <div class="crow"><span>Longest route</span><b>${G.lens[id]}</b></div>
     <div class="row"><button id="bc">Close</button></div>`);
   $('bc').onclick=closeModal;
 }
@@ -1540,7 +1740,7 @@ function statsModal(tab,end){
       ${table(
         row('Victory points',i=>`<b>${totVP(P[i])}</b>`)+
         row('Settlements / cities',i=>`${P[i].settles} / ${P[i].cities}`)+
-        row('Longest road reached',i=>ST(i).maxRoad)+
+        row('Longest route reached',i=>ST(i).maxRoad)+
         row('Knights played',i=>P[i].knights)+
         row('Special cards',i=>(G.lr===i?'🛣️ ':'')+(G.la===i?'⚔️':'')||'–')+
         row('Turns taken',i=>ST(i).turns)
@@ -1561,19 +1761,19 @@ function statsModal(tab,end){
       )}
       <div class="small">Expected production is computed from each roll using your buildings at that time (cities count double).</div>`;
   }else if(tab==='cards'){
-    body=legend+stacked('Cards received from dice','gainDice')+stacked('Cards spent on building and dev cards','spent')+stacked('Cards lost (robber, discards, Monopoly, trades)','_lost')+
+    body=legend+stacked('Cards received from dice','gainDice')+stacked('Cards spent on building and dev cards','spent')+stacked('Cards lost (robber, discards, Market Squeeze, trades)','_lost')+
       table(
         head('Gains')+
         row('From dice',i=>sum(ST(i).gainDice))+
         row('Stolen with the robber',i=>sum(ST(i).gainSteal))+
         row('Trades (bank and players)',i=>sum(ST(i).gainTrade))+
-        row('Start, Year of Plenty, Monopoly',i=>sum(ST(i).gainOther))+
+        row('Start, Bountiful Harvest, Market Squeeze',i=>sum(ST(i).gainOther))+
         head('Spending and losses')+
         row('Spent on building / dev cards',i=>sum(ST(i).spent))+
         row('Given away in trades',i=>sum(ST(i).lostTrade))+
         row('Stolen from you',i=>sum(ST(i).lostSteal))+
         row('Discarded after a 7',i=>sum(ST(i).lostDiscard))+
-        row('Lost to Monopoly',i=>sum(ST(i).lostMono))+
+        row('Lost to Market Squeeze',i=>sum(ST(i).lostMono))+
         head('Other')+
         row('Bank trades',i=>ST(i).bankTrades)+
         row('Player trades',i=>ST(i).playerTrades)+
@@ -1626,15 +1826,18 @@ function startModal(){
   }
   modal(`<h3>⬡ Hexfarers <small style="font-weight:400;opacity:.7">v${VERSION} · build ${BUILD}</small></h3>${resume}<div class="small">Settle the island: collect resources, trade, build roads, settlements and cities. First to ${S.rules.vp} victory points wins. Plays fully offline and saves automatically.</div>
     <div class="sec">Your colour</div><div class="seg" id="cols">${palette().map(([n,c],i)=>`<button data-col="${i}" title="${n}" aria-label="${n}" style="background:${c};border:3px solid ${S.color===i?'#fff':'transparent'};padding:14px 0;${S.color===i?'box-shadow:0 0 0 2px #2e9e5b':''}"></button>`).join('')}</div>
-    <div class="sec">Map</div>${mapSeg(S.map)}
-    <div class="small">${MAPDESC[S.map]||''}</div>
+    <div class="sec">Game mode</div>${xmGrid()}
+    <div class="small">${XMODES[S.xmode||'classic'].desc}${XMODES[S.xmode||'classic'].sea?' <b>Uses the Islands map.</b>':''}</div>
+    <div class="sec">Map</div>${mapSeg(XMODES[S.xmode||'classic'].sea?'sea':S.map,!!XMODES[S.xmode||'classic'].sea)}
+    <div class="small">${MAPDESC[XMODES[S.xmode||'classic'].sea?'sea':S.map]||''}</div>
     <div class="sec">Opponents</div>${botsSeg(S.bots)}
     <div class="sec">Bot difficulty</div>${seg('diff',[['easy','Easy'],['normal','Normal'],['hard','Hard'],['expert','Expert']],S.diff)}
     <div class="small">${DIFFDESC[S.diff]}</div>
     <div class="row"><button id="go">${sv?'Start a new game':'Start game'}</button></div>
     <div class="row"><button id="daily" class="ghost">📅 Daily challenge</button><button id="rules" class="ghost">⚖️ Game rules${rulesLabel()}</button></div>
-    <div class="row"><button id="st" class="ghost">⚙ Settings</button><button id="car" class="ghost">🏅 Career</button></div>
-    ${isStandalone()?'':'<div class="row"><button id="inst" class="ghost">📲 Install on my phone</button></div>'}`);
+    <div class="row"><button id="st" class="ghost">⚙ Settings</button><button id="car" class="ghost">🏅 Career</button><button id="rbk" class="ghost">📖 Rulebook</button></div>
+    ${isStandalone()?'':'<div class="row"><button id="inst" class="ghost">📲 Install on my phone</button></div>'}
+    <div class="small" style="text-align:center;opacity:.65;margin-top:6px">Independent fan project, not affiliated with CATAN GmbH. GPL-3.0. <a id="about" style="text-decoration:underline;cursor:pointer">About</a></div>`);
   {const pm=S.map;bindSeg(()=>{mapFix(pm);startModal();});}
   $('mbox').querySelectorAll('button[data-col]').forEach(b=>b.onclick=()=>{S.color=+b.dataset.col;saveS();startModal();});
   if(sv){
@@ -1647,6 +1850,9 @@ function startModal(){
   $('daily').onclick=()=>dailyModal(startModal);
   if($('inst'))$('inst').onclick=()=>installModal(startModal);
   $('rules').onclick=()=>rulesModal(startModal);
+  $('rbk').onclick=()=>rulebookModal(startModal,S.xmode);
+  $('about').onclick=()=>rulebookModal(startModal,'about');
+  $('mbox').querySelectorAll('button[data-xm]').forEach(b=>b.onclick=()=>{S.xmode=b.dataset.xm;saveS();startModal();});
 }
 function settingsModal(inGame){
   const tog=(k,l)=>`<label class="tog"><input type="checkbox" data-t="${k}" ${S[k]?'checked':''}>${l}</label>`;
@@ -1670,9 +1876,11 @@ function settingsModal(inGame){
     ${tog('cb','Colour-blind mode (safe colours, shapes, tile patterns)')}
     ${tog('chat','Bot chat and emotes')}
     <div class="sec">Building style</div>${bsGrid()}
+    <div class="sec">Resource icons</div>${rsGrid()}
     <div class="sec">Theme</div>${seg('theme',[['ocean','Ocean'],['night','Night'],['parchment','Parchment'],['meadow','Meadow']],S.theme)}
     <div class="sec">Layout</div>${seg('layout',[['auto','Auto'],['stack','Portrait'],['side','Side panel']],S.layout)}
     ${isStandalone()?'':'<div class="row"><button id="inst2" class="ghost">📲 Install on my phone</button></div>'}
+    <div class="row"><button id="rbk2" class="ghost">📖 Rulebook (all game modes)</button></div>
     <div class="row"><button id="rl2" class="ghost">⚖️ Game rules (next game)</button></div>
     <div class="row"><button id="car2" class="ghost">🏅 Career &amp; achievements</button></div>
     <div class="row"><button id="cl" class="ghost">📜 Changelog (v${VERSION})</button></div>
@@ -1682,11 +1890,13 @@ function settingsModal(inGame){
   lab();
   $('r1').oninput=e=>{S.delay=+e.target.value;saveS();lab();};
   $('r2').oninput=e=>{S.turnPause=+e.target.value;saveS();lab();};
-  $('mbox').querySelectorAll('input[data-t]').forEach(c=>c.onchange=()=>{S[c.dataset.t]=c.checked;saveS();if(c.dataset.t==='cb'){applyColors(S.color);if(G)render();}if(c.dataset.t==='sound'&&c.checked)sfx('trade');});
+  $('mbox').querySelectorAll('input[data-t]').forEach(c=>c.onchange=()=>{S[c.dataset.t]=c.checked;saveS();if(c.dataset.t==='cb'){applyColors(S.color);if(G)render();}if(c.dataset.t==='sound'){updSnd();if(c.checked)sfx('trade');}});
   {const pm=S.map;bindSeg(()=>{mapFix(pm);applyLayout();applyTheme();settingsModal(inGame);if(G)render();});}
   if($('inst2'))$('inst2').onclick=()=>installModal(()=>settingsModal(inGame));
   $('mbox').querySelectorAll('button[data-bs]').forEach(b=>b.onclick=()=>{S.bstyle=b.dataset.bs;saveS();if(G)render();settingsModal(inGame);});
+  $('mbox').querySelectorAll('button[data-rs]').forEach(b=>b.onclick=()=>{S.rstyle=b.dataset.rs;saveS();applyRStyle();if(G)render();settingsModal(inGame);});
   $('rl2').onclick=()=>rulesModal(()=>settingsModal(inGame));
+  $('rbk2').onclick=()=>rulebookModal(()=>settingsModal(inGame),inGame?XM():S.xmode);
   $('car2').onclick=()=>careerModal(()=>settingsModal(inGame));
   $('cl').onclick=()=>changelogModal(inGame);
   $('done').onclick=()=>inGame?closeModal():startModal();
@@ -1740,6 +1950,9 @@ const BSTYLES={
     <g transform="translate(7 -10)"><path d="M-1 0L-3 -14L1 -14Z M0 -1L14 -3L14 1Z M1 0L3 14L-1 14Z M0 1L-14 3L-14 -1Z" fill="${gold}" stroke-width="1" transform="scale(.8) rotate(20)"/><circle r="2" fill="${brown}"/></g>`;},cs:[-12,0.5]}
 };
 const bstyle=()=>BSTYLES[S.bstyle]||BSTYLES.classic;
+function rsGrid(){
+  return `<div class="bsg">${Object.keys(RSTYLES).map(k=>`<button data-rs="${k}" class="${(S.rstyle||'classic')===k?'on':''}"><span style="font-size:19px;letter-spacing:1px"><!--keep-->${RES.map(r=>RSTYLES[k].e[r]).join('')}<!--/keep--></span><span>${RSTYLES[k].name}</span></button>`).join('')}</div>`;
+}
 function bsGrid(){
   return `<div class="bsg">${Object.keys(BSTYLES).map(k=>{const B=BSTYLES[k];
     return `<button data-bs="${k}" class="${(S.bstyle||'classic')===k?'on':''}"><svg viewBox="-36 -26 72 38" width="100%" height="46"><g transform="translate(-17 0)" stroke="#111" stroke-width="1.5" stroke-linejoin="round">${B.house(PCOL[0])}</g><g transform="translate(15 0) scale(.9)" stroke="#111" stroke-width="1.5" stroke-linejoin="round">${B.city(PCOL[0])}</g></svg><span>${B.name}</span></button>`;}).join('')}</div>`;
@@ -1781,8 +1994,10 @@ function renderBoard(){
   }
   H.forEach((h,i)=>{
     s+=`<polygon data-hx="${i}" points="${hexPts(h)}" fill="${HEXCOL[h.res]}" stroke="${h.res==='sea'?'rgba(255,255,255,.14)':'#f3e9c6'}" stroke-width="2.5"/>`;
-    if(S.cb&&h.res!=='desert'&&h.res!=='sea')s+=`<polygon points="${hexPts(h)}" fill="url(#cb-${h.res})" pointer-events="none"/>`;
+    if(S.cb&&RES.includes(h.res)&&!h.fog)s+=`<polygon points="${hexPts(h)}" fill="url(#cb-${h.res})" pointer-events="none"/>`;
     if(h.res==='sea')s+=`<text x="${h.cx}" y="${h.cy+7}" text-anchor="middle" font-size="20" opacity=".16" pointer-events="none">🌊</text>`;
+    else if(h.fog)s+=`<polygon points="${hexPts(h)}" fill="#8a9aa6" stroke="#cfd8dc" stroke-width="2.5" pointer-events="none"/><text x="${h.cx}" y="${h.cy+8}" text-anchor="middle" font-size="24" pointer-events="none">☁️</text>`;
+    else if(h.res==='gold')s+=`<text x="${h.cx}" y="${h.cy-12}" text-anchor="middle" font-size="19">💰</text>`;
     else if(h.res!=='desert')s+=`<text x="${h.cx}" y="${h.cy-12}" text-anchor="middle" font-size="19">${EMO[h.res]}</text>`;
     else s+=`<text x="${h.cx}" y="${h.cy+6}" text-anchor="middle" font-size="22">🏜️</text>`;
   });
@@ -1796,7 +2011,7 @@ function renderBoard(){
   });
   // number tokens
   H.forEach((h,i)=>{
-    if(!h.num)return;
+    if(!h.num||h.fog)return;
     const red=h.num===6||h.num===8,on=G.hl===h.num&&!G.mode;
     s+=`<circle cx="${h.cx}" cy="${h.cy+10}" r="${on?15:12}" fill="${on?'#ffee58':'#fbf3d9'}" stroke="${on?'#f57f17':'#8a6d3b'}" stroke-width="${on?2.5:1}"/><text x="${h.cx}" y="${h.cy+(on?16:15)}" text-anchor="middle" font-size="${on?16:13}" font-weight="800" fill="${red?'#c62828':'#222'}">${h.num}</text>`;
   });
@@ -1860,7 +2075,9 @@ function renderPanel(){
   else if(G.cur===0&&!G.auto)msg=G.phase==='roll'?'Your turn: roll the dice':'Your turn';
   else msg=`${PNAME[G.cur]} is playing…`;
   $('msg').textContent=msg;
-  $('dice').innerHTML=G.dice?`<span class="dd ${G.rolling?'tumble':''}">${dieSVG(G.dice[0],42)}${dieSVG(G.dice[1],42)}</span><span class="tot">${G.rolling?'':G.dice[0]+G.dice[1]}</span>`:'';
+  const mr=myRoll(),dv=G.dice||[6,6];
+  $('dice').classList.toggle('tapme',mr);
+  $('dice').innerHTML=(G.dice||mr)?`<span class="dd ${G.rolling?'tumble':''}">${dieSVG(dv[0],42)}${dieSVG(dv[1],42)}</span>${mr?'<span class="hint">TAP<br>TO<br>ROLL</span>':`<span class="tot">${G.rolling?'':dv[0]+dv[1]}</span>`}`:'';
   const shown=G.shown||me.res,devTot=sum(me.dev)+sum(me.devNew),devNew=sum(me.devNew);
   $('hand').innerHTML=RES.map(r=>`<div class="chip" data-r="${r}">${EMO[r]}<b>${shown[r]}</b></div>`).join('')+`<div class="chip" data-r="dev" data-open="1">🃏<b>${devTot}</b>${devNew?`<i class="lock">🔒${devNew}</i>`:''}</div>`;
   if(G.waiting){
@@ -1881,11 +2098,13 @@ function renderPanel(){
       ['buy','Buy card','🐑🌾⛰️',act&&can(me,COST.dev)&&G.deck.length>0],
       ['cards','My cards ℹ','',G.phase!=='setup'&&!G.over],
       ['trade','Trade','',act],
-      ['end','End turn','',act]
+      ...(XM()==='fish'?[['fish','🐟 Fish',`${me.fish||0}🐟`,act&&(me.fish||0)>=2]]:[])
     ];
-    $('btns').innerHTML=B.map(([a,l,sub,ok])=>`<button data-a="${a}" ${ok?'':'disabled'}>${l}${sub?`<small>${sub}</small>`:''}</button>`).join('');
+    $('btns').innerHTML=remo(B.map(([a,l,sub,ok])=>`<button data-a="${a}" ${ok?'':'disabled'}>${l}${sub?`<small>${sub}</small>`:''}</button>`).join(''));
   }
-  $('log').innerHTML=G.log.slice(-8).reverse().map(x=>`<div>${colorize(logText(x))}</div>`).join('');
+  const eb=$('endbtn'),showEnd=!G.over&&!G.auto&&G.cur===0&&G.phase==='main'&&!G.waiting&&!(G.mode&&G.sel);
+  eb.classList.toggle('hide',!showEnd);eb.disabled=!canAct();
+  renderXbar();
 }
 
 /* ---------- input ---------- */
@@ -1915,12 +2134,18 @@ $('btns').addEventListener('click',e=>{
   else if(a==='cards')devModal();
   else if(a==='trade')tradeModal();
   else if(a==='end')tryEndTurn();
+  else if(a==='fish')fishModal();
 });
 $('gear').addEventListener('click',()=>settingsModal(!!G));
 $('statbtn').addEventListener('click',()=>{if(G&&G.st)statsModal('overview',false);});
 const modalFree=()=>$('modal').classList.contains('hidden');
 $('logbtn').addEventListener('click',()=>{if(G&&modalFree())logModal();});
-$('log').addEventListener('click',()=>{if(G&&modalFree())logModal();});
+$('endbtn').addEventListener('click',()=>{if(G&&!$('endbtn').disabled&&canAct())tryEndTurn();});
+const myRoll=()=>!!G&&!G.over&&G.cur===0&&!G.auto&&!G.busy&&G.phase==='roll'&&!G.mode&&!G.waiting;
+$('dice').addEventListener('click',()=>{if(myRoll()&&modalFree())humanRoll();});
+function updSnd(){$('sndbtn').textContent=S.sound?'🔊':'🔇';}
+$('sndbtn').addEventListener('click',()=>{S.sound=!S.sound;saveS();updSnd();if(S.sound)sfx('trade');});
+$('xbar').addEventListener('click',()=>{if(G&&modalFree())rulebookModal(null,XM());});
 $('top').addEventListener('click',e=>{const b=e.target.closest('.pl[data-p]');if(G&&b&&+b.dataset.p>0&&modalFree())botModal(+b.dataset.p);});
 /* ---------- zoom & pan ---------- */
 const VIEW={B:null,cx:0,cy:0,z:1};
@@ -2032,7 +2257,7 @@ applyLayout();
 document.title='Hexfarers v'+VERSION;
 if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){try{navigator.serviceWorker.register('sw.js').catch(()=>{});}catch(e){}}
 window.VERSION=VERSION;window.recordGame=recordGame;window.readCareer=readCareer;window.ACH=ACH;window.newGame=newGame;window.getG=()=>G;window.getS=()=>S;window.loadGame=loadGame;
-applyTheme();
+applyTheme();applyRStyle();updSnd();
 startModal();
 </script>
 </body>
