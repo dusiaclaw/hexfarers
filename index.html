@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#0b3d5c">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="app-icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-180.png">
 <meta name="apple-mobile-web-app-title" content="Hexfarers">
 <meta name="application-name" content="Hexfarers">
 <meta name="description" content="Hexfarers: a hex-island trading and building game against AI bots. Works offline.">
@@ -202,8 +202,9 @@ const COST={ship:{wood:1,sheep:1},road:{wood:1,brick:1},settle:{wood:1,brick:1,s
 const DIFFDESC={easy:'Easy: bots build haphazardly, skip some actions and accept almost any trade.',normal:'Normal: balanced bots that plan builds and use the bank.',hard:'Hard: bots pick complementary spots, race for cities, target the leader with the robber and drive hard bargains.',expert:'Expert: like Hard, but bots also grab the best spots first, favour 6s and 8s, hit the leader hard, and only trade when it clearly helps them.'};
 
 /* ---------- version & changelog ---------- */
-const VERSION='1.11';
+const VERSION='1.12';
 const CHANGELOG=[
+  {v:'1.12',date:'2026-10-27',items:['Home-screen icon fix: the app icon files were renamed so phones cannot reuse the old blank icon. Remove the old app from your home screen and install it again.']},
   {v:'1.11',date:'2026-10-27',items:['New app icon (a house on a hex tile) for the home screen. The previous icon files were blank.']},
   {v:'1.10',date:'2026-10-27',items:[
     'Installable web app: when hosted online, the game can be added to your phone\'s home screen and then opens full-screen like an app and works offline.',
