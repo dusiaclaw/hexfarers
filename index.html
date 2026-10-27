@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#0b3d5c">
-<link rel="manifest" href="manifest.webmanifest?b=c3">
-<link rel="icon" type="image/png" href="app-icon-192.png?b=c3">
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-180.png?b=c3">
+<link rel="manifest" href="manifest.webmanifest?b=d1">
+<link rel="icon" type="image/png" href="app-icon-192.png?b=d1">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-180.png?b=d1">
 <meta name="apple-mobile-web-app-title" content="Hexfarers">
 <meta name="application-name" content="Hexfarers">
 <meta name="description" content="Hexfarers: a hex-island trading and building game against AI bots. Works offline.">
@@ -126,6 +126,9 @@ table.st tr.hd td{background:var(--btn);font-weight:700;text-align:left}
 .resp{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0;padding:6px 8px;background:rgba(0,0,0,.25);border-radius:8px;font-size:13px}
 .resp button{padding:7px 14px!important;flex:none}
 .resp.no{opacity:.65}
+#mbox .bsg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0}
+#mbox .bsg button{background:var(--btn);border:2px solid transparent;border-radius:10px;padding:3px 2px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:0}
+#mbox .bsg button.on{border-color:#2e9e5b;background:var(--line)}
 .myhand{display:flex;gap:5px;margin:4px 0 6px}
 .myhand span{flex:1;background:var(--btn);border-radius:8px;padding:4px 0;text-align:center;font-size:15px;line-height:1.2}
 .myhand b{margin-left:3px}
@@ -202,8 +205,12 @@ const COST={ship:{wood:1,sheep:1},road:{wood:1,brick:1},settle:{wood:1,brick:1,s
 const DIFFDESC={easy:'Easy: bots build haphazardly, skip some actions and accept almost any trade.',normal:'Normal: balanced bots that plan builds and use the bank.',hard:'Hard: bots pick complementary spots, race for cities, target the leader with the robber and drive hard bargains.',expert:'Expert: like Hard, but bots also grab the best spots first, favour 6s and 8s, hit the leader hard, and only trade when it clearly helps them.'};
 
 /* ---------- version & changelog ---------- */
-const VERSION='1.10',BUILD='c3';
+const VERSION='1.11',BUILD='d1';
 const CHANGELOG=[
+  {v:'1.11',date:'2026-10-27',items:[
+    'Building styles (Settings): choose how settlements and cities look: Cottage, Castle, Tents, City blocks or Farm, with a live preview.',
+    'Turn order by dice: at the start everyone rolls two dice; the highest roll places first and ties are re-rolled. You are no longer always first (rule “Who places first” lets you pick “I go first”).',
+    'Islands map: starting settlements may only be placed on the main island, as in the real rules. Other islands are reached by ship later.']},
   {v:'1.10',date:'2026-10-27',items:[
     'Installable web app: when hosted online, the game can be added to your phone\'s home screen and then opens full-screen like an app and works offline.',
     '📲 Install button on the start screen and in Settings, with step-by-step instructions for Android (Chrome) and iPhone (Safari).',
@@ -262,7 +269,7 @@ function changelogModal(inGame){
 }
 
 /* ---------- settings (saved on this device) ---------- */
-const DEF={bots:3,diff:'normal',delay:1,turnPause:1.5,step:false,anim:true,hl:true,reveal:false,confirmEnd:true,confirmPick:true,offers:true,layout:'auto',color:0,map:'std',personas:true,sound:true,haptics:true,cb:false,theme:'ocean',chat:true,rules:{vp:10,start:'std',friendly:false,hand:7,rate:4}};
+const DEF={bots:3,diff:'normal',delay:1,turnPause:1.5,step:false,anim:true,hl:true,reveal:false,confirmEnd:true,confirmPick:true,offers:true,layout:'auto',color:0,map:'std',personas:true,sound:true,haptics:true,cb:false,theme:'ocean',bstyle:'classic',chat:true,rules:{vp:10,start:'std',friendly:false,hand:7,rate:4,order:'roll'}};
 let S={...DEF,rules:{...DEF.rules}};
 try{Object.assign(S,JSON.parse(localStorage.getItem('hexfarers.settings')||'{}'));}catch(e){}
 S.rules=Object.assign({},DEF.rules,S.rules||{});
@@ -475,9 +482,11 @@ function newGame(nAI,auto,diff,map,opts){
   const R=opts.daily?{...DEF.rules}:{...DEF.rules,...(S.rules||{})};
   if(!big)nAI=Math.min(nAI,3);nAI=Math.min(nAI,5);
   buildBoard(mp);
-  const n=nAI+1,seq=[],BN=big?24:19;
-  for(let i=0;i<n;i++)seq.push(i);for(let i=n-1;i>=0;i--)seq.push(i);
-  G={n,auto:!!auto,diff:diff||S.diff,players:[],cur:0,phase:'setup',seq,dice:null,rolling:false,robber:H.findIndex(h=>h.res==='desert'),deck:makeDeck(big),map:mp,bankN:BN,rules:R,vpWin:R.vp,daily:opts.daily?{key:opts.daily.key,goalId:opts.daily.goal.id}:null,mode:null,resolve:null,noCancel:false,devPlayed:false,lr:null,la:null,lens:Array(n).fill(0),log:[],over:false,winner:null,lastSettle:null,busy:false,turns:0,turnId:0,bank:{wood:BN,brick:BN,sheep:BN,wheat:BN,ore:BN},undo:[],sel:null,setupI:0,setupStep:0,hl:null,rb:null,shown:null,flash:null,waiting:null,waitMsg:''};
+  const n=nAI+1,BN=big?24:19;
+  const ro=R.order==='me'?null:rollForOrder(n);
+  const order=ro?ro.order:[...Array(n).keys()];
+  const seq=[...order,...order.slice().reverse()];
+  G={n,auto:!!auto,diff:diff||S.diff,players:[],cur:0,phase:'setup',seq,order,orderRolls:ro?ro.rounds:null,orderShown:false,dice:null,rolling:false,robber:H.findIndex(h=>h.res==='desert'),deck:makeDeck(big),map:mp,bankN:BN,rules:R,vpWin:R.vp,daily:opts.daily?{key:opts.daily.key,goalId:opts.daily.goal.id}:null,mode:null,resolve:null,noCancel:false,devPlayed:false,lr:null,la:null,lens:Array(n).fill(0),log:[],over:false,winner:null,lastSettle:null,busy:false,turns:0,turnId:0,bank:{wood:BN,brick:BN,sheep:BN,wheat:BN,ore:BN},undo:[],sel:null,setupI:0,setupStep:0,hl:null,rb:null,shown:null,flash:null,waiting:null,waitMsg:''};
   for(let i=0;i<n;i++)G.players.push({id:i,res:emptyRes(),dev:emptyDev(),devNew:emptyDev(),knights:0,roads:0,settles:0,cities:0,ships:0,bonus:0,home:[],ai:!!auto||i>0});
   {const sty=shuffle(['builder','rusher','trader','balanced']);let k=0;
    for(const p of G.players)if(p.ai)p.style=S.personas?sty[(k++)%4]:'balanced';}
@@ -492,7 +501,7 @@ function newGame(nAI,auto,diff,map,opts){
 const can=(p,c)=>Object.keys(c).every(k=>p.res[k]>=c[k]);
 const pay=(p,c)=>{for(const k in c){p.res[k]-=c[k];if(G&&G.bank)G.bank[k]+=c[k];if(G&&G.st)G.st.p[p.id].spent[k]+=c[k];}};
 const RULE=k=>((G&&G.rules)||DEF.rules)[k];
-function settleOK(v,pid,setup){const x=V[v];if(x.owner!==-1)return false;if(x.land===false)return false;if(x.adj.some(a=>V[a].owner!==-1))return false;if(!setup&&!x.edges.some(e=>E[e].owner===pid))return false;return true;}
+function settleOK(v,pid,setup){const x=V[v];if(x.owner!==-1)return false;if(x.land===false)return false;if(setup&&G&&G.map==='sea'&&x.isl!==0)return false;if(x.adj.some(a=>V[a].owner!==-1))return false;if(!setup&&!x.edges.some(e=>E[e].owner===pid))return false;return true;}
 function edgeKinds(ed){
   if(!G||G.map!=='sea'||!ed.hx)return ['road'];
   const hs=ed.hx.map(i=>H[i].res),k=[];
@@ -880,7 +889,40 @@ async function aiTurn(p){
 }
 
 /* ---------- flow ---------- */
-async function mainFlow(){await setupPhase();await turnLoop();}
+const ORD=()=>(G&&G.order)||[...Array(G.n).keys()];
+function rollForOrder(n){
+  const rounds=[],roll=()=>1+Math.floor(Math.random()*6);
+  const rank=ids=>{
+    const rs=ids.map(id=>{const d=[roll(),roll()];return {id,d,t:d[0]+d[1]};});
+    rounds.push({rolls:rs.map(r=>({...r}))});
+    rs.sort((a,b)=>b.t-a.t);
+    const out=[];let i=0;
+    while(i<rs.length){
+      let j=i;while(j<rs.length&&rs[j].t===rs[i].t)j++;
+      const grp=rs.slice(i,j).map(r=>r.id);
+      if(grp.length===1)out.push(grp[0]);else out.push(...rank(grp));      // a tie: those players roll again
+      i=j;
+    }
+    return out;
+  };
+  return {order:rank([...Array(n).keys()]),rounds};
+}
+async function showOrder(){
+  if(G.orderShown||G.auto||quick()||!G.orderRolls){G.orderShown=true;return;}
+  G.orderShown=true;
+  const rd=G.orderRolls,rnd=()=>1+Math.floor(Math.random()*6);
+  const rows=(r,final)=>r.rolls.map(x=>`<div class="drow"><span style="color:${PCOL[x.id]}">${PNAME[x.id]}</span><span class="dd">${dieSVG(final?x.d[0]:rnd(),30)}${dieSVG(final?x.d[1]:rnd(),30)} <b style="display:inline-block;width:26px;text-align:right">${final?x.t:'?'}</b></span></div>`).join('');
+  for(let k=0;k<rd.length;k++){
+    const last=k===rd.length-1,head=k===0?'Roll for turn order':'Tie! These players roll again';
+    for(let f=0;f<(animOn()?6:0);f++){modal(`<h3>🎲 ${head}</h3>${rows(rd[k],false)}`);sfx(f===0?'roll':'');await pause(110);}
+    const ord=G.order.map((id,i)=>`<div class="drow"><span>${i+1}. <b style="color:${PCOL[id]}">${PNAME[id]}</b></span><span class="small">${i===0?'places first, takes first turn':''}</span></div>`).join('');
+    await new Promise(res=>{
+      modal(`<h3>🎲 ${head}</h3>${rows(rd[k],true)}${last?`<div class="sec">Placement order</div>${ord}<div class="small" style="margin-top:4px">Settlements are placed in this order, then back in reverse. The player who places last (the winner of the roll) takes the first turn.</div>`:''}<div class="row"><button id="ordgo">${last?'Start game':'Roll again'}</button></div>`);
+      $('ordgo').onclick=()=>{closeModal();res();};
+    });
+  }
+}
+async function mainFlow(){await showOrder();await setupPhase();await turnLoop();}
 async function setupPhase(){
   while(G.setupI<G.seq.length){
     const i=G.setupI,p=G.seq[i];G.cur=p;
@@ -894,7 +936,7 @@ async function setupPhase(){
     if(isAI(p)){await sleep(350);e=aiRoadSetup(p,G.lastSettle);}else e=await pickBoard('roadSetup');
     placeRoad(p,e,true);G.setupStep=0;G.setupI++;render();saveNow();
   }
-  G.cur=0;G.phase='roll';snapStats();saveNow();
+  G.cur=ORD()[0];G.phase='roll';snapStats();saveNow();
 }
 function waitContinue(msg){return new Promise(res=>{G.waiting=res;G.waitMsg=msg;render();});}
 async function turnLoop(){
@@ -919,7 +961,7 @@ function nextPlayer(){
   const pl=G.players[G.cur];
   for(const k in pl.devNew){pl.dev[k]+=pl.devNew[k];pl.devNew[k]=0;}
   snapStats();G.undo=[];
-  G.devPlayed=false;G.turnId++;G.cur=(G.cur+1)%G.n;
+  G.devPlayed=false;G.turnId++;{const o=ORD();G.cur=o[(o.indexOf(G.cur)+1)%o.length];}
 }
 const canAct=()=>!G.over&&G.cur===0&&!G.auto&&!G.busy&&!G.mode&&G.phase==='main';
 
@@ -954,6 +996,7 @@ function whyNot(mode,key){
   if(mode==='city')return v.owner===pid&&!v.city?'':(v.owner===pid?`This is already a city.`:`Tap one of your own settlements to upgrade it.`);
   if(!v.land)return `Settlements need land: this corner only touches the sea.`;
   if(v.owner!==-1)return `This spot is already built on.`;
+  if(mode==='settleSetup'&&G.map==='sea'&&v.isl!==0)return `At the start you may only settle on the main (largest) island. You can reach the other islands by ship later.`;
   if(v.adj.some(a=>V[a].owner!==-1))return `Too close to another settlement: settlements need at least two road lengths between them.`;
   if(mode==='settle')return `A new settlement must connect to one of your roads.`;
   return `You can't build here.`;
@@ -1296,6 +1339,7 @@ function rulesModal(back){
   modal(`<div class="hdr"><h3>⚖️ Game rules</h3></div><div class="small">Changes apply to the next new game.</div>
     <div class="sec">Victory points to win</div>${sg('vp',[[8,'8'],[10,'10 (standard)'],[12,'12']])}
     <div class="sec">Starting cards</div>${sg('start',[['std','None'],['pack','1 of each'],['rich','3 of each']])}
+    <div class="sec">Who places first</div>${sg('order',[['roll','Roll dice (standard)'],['me','I go first']])}
     <div class="sec">Hand limit before a 7 makes you discard</div>${sg('hand',[[7,'7 (standard)'],[9,'9'],[99,'No limit']])}
     <div class="sec">Bank trade rate</div>${sg('rate',[[4,'4:1 (standard)'],[3,'3:1']])}
     <div class="sec">Friendly robber</div>${sg('friendly',[[false,'Off'],[true,'On']])}
@@ -1303,7 +1347,7 @@ function rulesModal(back){
     <div class="row"><button id="rb1">Done</button></div><div class="row"><button id="rbr" class="ghost">Reset to standard rules</button></div>`);
   $('mbox').querySelectorAll('button[data-rule]').forEach(b=>b.onclick=()=>{
     const k=b.dataset.rule;let v=b.dataset.val;
-    if(v==='true')v=true;else if(v==='false')v=false;else if(k!=='start')v=+v;
+    if(v==='true')v=true;else if(v==='false')v=false;else if(k!=='start'&&k!=='order')v=+v;
     S.rules[k]=v;saveS();rulesModal(back);
   });
   $('rb1').onclick=back;
@@ -1560,7 +1604,7 @@ function statsModal(tab,end){
 }
 
 /* ---------- start screen & settings ---------- */
-const MAPDESC={sea:'Islands: several islands in open sea. Build ships 🌲🐑 to reach new islands; the first settlement on each new island gives +1 VP.',std:'Standard: a random 19-tile island for 2–4 players.',fixed:'Beginner: the same balanced 19-tile island every game. Good for learning.',large:'Large: 30 tiles and 11 ports for 4–6 players. The bank holds 24 of each card and there are 34 development cards.'};
+const MAPDESC={sea:'Islands: several islands in open sea. Start on the main island, then build ships 🌲🐑 to reach the others; the first settlement on each new island gives +1 VP.',std:'Standard: a random 19-tile island for 2–4 players.',fixed:'Beginner: the same balanced 19-tile island every game. Good for learning.',large:'Large: 30 tiles and 11 ports for 4–6 players. The bank holds 24 of each card and there are 34 development cards.'};
 const mapSeg=(cur,dis)=>seg('map',[['std','Standard'],['fixed','Beginner'],['sea','Islands'],['large','Large']],cur,dis);
 const botsSeg=(cur,dis)=>seg('bots',S.map==='large'?[[3,'3 bots'],[4,'4 bots'],[5,'5 bots']]:[[1,'1 bot'],[2,'2 bots'],[3,'3 bots']],cur,dis);
 const mapFix=pm=>{if(S.map==='large'&&pm!=='large')S.bots=Math.max(S.bots,4);if(S.map!=='large'&&S.bots>3)S.bots=3;if(S.map==='large'&&S.bots<3)S.bots=3;saveS();};
@@ -1625,6 +1669,7 @@ function settingsModal(inGame){
     ${tog('haptics','Vibration')}
     ${tog('cb','Colour-blind mode (safe colours, shapes, tile patterns)')}
     ${tog('chat','Bot chat and emotes')}
+    <div class="sec">Building style</div>${bsGrid()}
     <div class="sec">Theme</div>${seg('theme',[['ocean','Ocean'],['night','Night'],['parchment','Parchment'],['meadow','Meadow']],S.theme)}
     <div class="sec">Layout</div>${seg('layout',[['auto','Auto'],['stack','Portrait'],['side','Side panel']],S.layout)}
     ${isStandalone()?'':'<div class="row"><button id="inst2" class="ghost">📲 Install on my phone</button></div>'}
@@ -1640,6 +1685,7 @@ function settingsModal(inGame){
   $('mbox').querySelectorAll('input[data-t]').forEach(c=>c.onchange=()=>{S[c.dataset.t]=c.checked;saveS();if(c.dataset.t==='cb'){applyColors(S.color);if(G)render();}if(c.dataset.t==='sound'&&c.checked)sfx('trade');});
   {const pm=S.map;bindSeg(()=>{mapFix(pm);applyLayout();applyTheme();settingsModal(inGame);if(G)render();});}
   if($('inst2'))$('inst2').onclick=()=>installModal(()=>settingsModal(inGame));
+  $('mbox').querySelectorAll('button[data-bs]').forEach(b=>b.onclick=()=>{S.bstyle=b.dataset.bs;saveS();if(G)render();settingsModal(inGame);});
   $('rl2').onclick=()=>rulesModal(()=>settingsModal(inGame));
   $('car2').onclick=()=>careerModal(()=>settingsModal(inGame));
   $('cl').onclick=()=>changelogModal(inGame);
@@ -1661,12 +1707,57 @@ function renderTop(){
   }).join('')+'<div></div>'.repeat(Math.max(0,4-G.n));
 }
 function shade(hex,f){const n=parseInt(hex.slice(1),16);const r=Math.round((n>>16)*f),g=Math.round(((n>>8)&255)*f),b=Math.round((n&255)*f);return `rgb(${r},${g},${b})`;}
+const brown='#3b2a1a',gold='#ffd54f',glass='#fff3b0';
+const BSTYLES={
+  classic:{name:'Cottage',
+    house:c=>`<path d="M-8 8V-1H8V8Z" fill="${c}"/><path d="M-10 -1L0 -11L10 -1Z" fill="${shade(c,.72)}"/><rect x="-2" y="2" width="4" height="6" fill="${brown}" stroke="none"/>`,hs:[0,-2.4],
+    city:c=>{const dk=shade(c,.7);return `<path d="M-3 9V0H14V9Z" fill="${c}"/><path d="M-4.5 0L5.5 -8L15.5 0Z" fill="${dk}"/>
+    <path d="M-15 9V-6H-3V9Z" fill="${c}"/><path d="M-16.5 -6L-9 -15L-1.5 -6Z" fill="${dk}"/>
+    <path d="M-9 -15V-21" stroke-width="1.3"/><path d="M-9 -21L-2 -19L-9 -17Z" fill="${gold}" stroke-width="1"/>
+    <path d="M-12 9V4Q-9 0 -6 4V9Z" fill="${brown}" stroke="none"/>
+    <rect x="-12.5" y="-3.5" width="3" height="3" fill="${glass}" stroke="none"/><rect x="-7" y="-3.5" width="3" height="3" fill="${glass}" stroke="none"/>
+    <rect x="2" y="3" width="3.5" height="3.5" fill="${glass}" stroke="none"/><rect x="8" y="3" width="3.5" height="3.5" fill="${glass}" stroke="none"/>`;},cs:[-9,-7.6]},
+  castle:{name:'Castle',
+    house:c=>`<path d="M-7 8V-5H-4V-8H-1V-5H1V-8H4V-5H7V8Z" fill="${c}"/><path d="M-2 8V3Q0 0 2 3V8Z" fill="${brown}" stroke="none"/><path d="M0 -8V-15" stroke-width="1.3"/><path d="M0 -15L7 -13L0 -11Z" fill="${gold}" stroke-width="1"/>`,hs:[0,1.2],
+    city:c=>{const dk=shade(c,.7);return `<path d="M-17 9V-8H-14V-11H-11V-8H-8V-11H-5V9Z" fill="${dk}"/><path d="M5 9V-8H8V-11H11V-8H14V-11H17V9Z" fill="${dk}"/>
+    <path d="M-5 9V-2H5V9Z" fill="${c}"/><path d="M-6 -2V-13H-3V-16H0V-13H3V-16H6V-2Z" fill="${c}"/>
+    <path d="M0 -16V-23" stroke-width="1.3"/><path d="M0 -23L7 -21L0 -19Z" fill="${gold}" stroke-width="1"/>
+    <path d="M-2.5 9V4Q0 1 2.5 4V9Z" fill="${brown}" stroke="none"/><rect x="-1" y="-9" width="2" height="4" fill="${brown}" stroke="none"/>
+    <rect x="-12" y="-3" width="2" height="4" fill="${brown}" stroke="none"/><rect x="10" y="-3" width="2" height="4" fill="${brown}" stroke="none"/>`;},cs:[0,-6.6]},
+  tent:{name:'Tents',
+    house:c=>`<path d="M-11 8L0 -10L11 8Z" fill="${c}"/><path d="M-3.5 8L0 0L3.5 8Z" fill="${shade(c,.55)}" stroke-width="1.2"/><path d="M0 -10V-14" stroke-width="1.3"/>`,hs:[0,5.5],
+    city:c=>{const dk=shade(c,.7);return `<path d="M-18 9L-11 -3L-4 9Z" fill="${dk}"/><path d="M4 9L11 -3L18 9Z" fill="${dk}"/>
+    <path d="M-9 9L0 -14L9 9Z" fill="${c}"/><path d="M-3 9L0 0L3 9Z" fill="${shade(c,.55)}" stroke-width="1.2"/>
+    <path d="M0 -14V-21" stroke-width="1.3"/><path d="M0 -21L7 -19L0 -17Z" fill="${gold}" stroke-width="1"/>`;},cs:[0,-3]},
+  modern:{name:'City blocks',
+    house:c=>`<path d="M-8 8V-5H8V8Z" fill="${c}"/><path d="M-9.5 -5V-8H9.5V-5Z" fill="${shade(c,.65)}"/><rect x="-5.5" y="-2" width="3.2" height="3.2" fill="${glass}" stroke="none"/><rect x="2.3" y="-2" width="3.2" height="3.2" fill="${glass}" stroke="none"/><rect x="-2" y="3" width="4" height="5" fill="${brown}" stroke="none"/>`,hs:[0,-10.2],
+    city:c=>{const dk=shade(c,.7);const w=(x,y)=>`<rect x="${x}" y="${y}" width="2.2" height="2.2" fill="${glass}" stroke="none"/>`;return `<path d="M-17 9V-6H-8V9Z" fill="${dk}"/><path d="M6 9V-10H16V9Z" fill="${dk}"/><path d="M-7 9V-17H5V9Z" fill="${c}"/>
+    <path d="M-1 -17V-23" stroke-width="1.3"/>${w(-5,-14)}${w(-1,-14)}${w(1.8,-14)}${w(-5,-9)}${w(-1,-9)}${w(1.8,-9)}${w(-5,-4)}${w(-1,-4)}${w(1.8,-4)}${w(-14,-3)}${w(-11,-3)}${w(-14,2)}${w(-11,2)}${w(9,-7)}${w(12.5,-7)}${w(9,-2)}${w(12.5,-2)}${w(9,3)}${w(12.5,3)}`;},cs:[-1,-19.5]},
+  farm:{name:'Farm',
+    house:c=>`<path d="M-9 8V-2L-5 -8H5L9 -2V8Z" fill="${c}"/><path d="M-5 8V1H5V8Z" fill="${brown}" stroke="none"/><path d="M-5 1L5 8M5 1L-5 8" stroke="${shade(c,1.4)}" stroke-width="1"/>`,hs:[0,-3.2],
+    city:c=>{const dk=shade(c,.7);return `<path d="M-17 9V-1L-12 -7L-7 -1V9Z" fill="${c}"/><path d="M-14 9V3H-10V9Z" fill="${brown}" stroke="none"/>
+    <path d="M7 9L9 -7H13L15 9Z" fill="${dk}" transform="translate(-4 0)"/><path d="M3 -7H7V-10H3Z" fill="${dk}" stroke="none"/>
+    <g transform="translate(7 -10)"><path d="M-1 0L-3 -14L1 -14Z M0 -1L14 -3L14 1Z M1 0L3 14L-1 14Z M0 1L-14 3L-14 -1Z" fill="${gold}" stroke-width="1" transform="scale(.8) rotate(20)"/><circle r="2" fill="${brown}"/></g>`;},cs:[-12,0.5]}
+};
+const bstyle=()=>BSTYLES[S.bstyle]||BSTYLES.classic;
+function bsGrid(){
+  return `<div class="bsg">${Object.keys(BSTYLES).map(k=>{const B=BSTYLES[k];
+    return `<button data-bs="${k}" class="${(S.bstyle||'classic')===k?'on':''}"><svg viewBox="-36 -26 72 38" width="100%" height="46"><g transform="translate(-17 0)" stroke="#111" stroke-width="1.5" stroke-linejoin="round">${B.house(PCOL[0])}</g><g transform="translate(15 0) scale(.9)" stroke="#111" stroke-width="1.5" stroke-linejoin="round">${B.city(PCOL[0])}</g></svg><span>${B.name}</span></button>`;}).join('')}</div>`;
+}
 function houseSVG(x,y,c,sy){
+  const B=bstyle();
+  return `<g transform="translate(${x},${y})" stroke="#111" stroke-width="1.6" stroke-linejoin="round">${B.house(c)}${sy?`<text x="${B.hs[0]}" y="${B.hs[1]}" text-anchor="middle" font-size="7.5" font-weight="800" fill="#fff" stroke="#111" stroke-width=".5" paint-order="stroke">${sy}</text>`:''}</g>`;
+}
+function citySVG(x,y,c,sy){
+  const B=bstyle();
+  return `<g transform="translate(${x},${y})" stroke="#111" stroke-width="1.5" stroke-linejoin="round">${B.city(c)}${sy?`<text x="${B.cs[0]}" y="${B.cs[1]}" text-anchor="middle" font-size="7" font-weight="800" fill="#fff" stroke="#111" stroke-width=".5" paint-order="stroke">${sy}</text>`:''}</g>`;
+}
+function houseSVG_old(x,y,c,sy){
   return `<g transform="translate(${x},${y})" stroke="#111" stroke-width="1.6" stroke-linejoin="round">
     <path d="M-8 8V-1H8V8Z" fill="${c}"/><path d="M-10 -1L0 -11L10 -1Z" fill="${shade(c,.72)}"/>
     <rect x="-2" y="2" width="4" height="6" fill="#3b2a1a" stroke="none"/>${sy?`<text x="0" y="-2.4" text-anchor="middle" font-size="7.5" font-weight="800" fill="#fff" stroke="#111" stroke-width=".5" paint-order="stroke">${sy}</text>`:''}</g>`;
 }
-function citySVG(x,y,c,sy){
+function citySVG_old(x,y,c,sy){
   const dk=shade(c,.7);
   return `<g transform="translate(${x},${y})" stroke="#111" stroke-width="1.5" stroke-linejoin="round">
     <path d="M-3 9V0H14V9Z" fill="${c}"/><path d="M-4.5 0L5.5 -8L15.5 0Z" fill="${dk}"/>
@@ -1916,6 +2007,7 @@ function scheduleSave(){if(!G||G.auto)return;clearTimeout(saveTimer);saveTimer=s
 function loadGame(){
   const o=readSave();if(!o)return false;
   V=o.V;E=o.E;H=o.H;PORTS=o.PORTS;G=o.G;applyColors(S.color,S.cb?null:o.pcol);
+  if(!G.order)G.order=[...Array(G.n).keys()];
   G.st.start=Date.now()-(G.st.elapsed||0);
   G.resolve=null;G.waiting=null;G.mode=null;G.sel=null;G.busy=false;G.shown=null;G.flash=null;G.rolling=false;
   fitBoard();closeModal();render();
